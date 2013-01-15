@@ -7,6 +7,7 @@ EJD_PRIV_MIB = $(EJD_PRIV)/mibs
 EJD_MIB = $(EJABBERD_DIR)/mibs
 DEVNODES = node1 node2
 TESTNODES = internal_mnesia internal_redis odbc_mnesia odbc_redis external_mnesia external_redis
+PRODUCTIONNODES = production1 production2
 
 all: deps compile
 
@@ -38,6 +39,8 @@ devrel: $(DEVNODES)
 
 testrel: $(DEVNODES) $(TESTNODES)
 
+productionrel: $(PRODUCTIONNODES)
+
 $(DEVNODES) $(TESTNODES): rebar deps compile deps_dev
 	@echo "building $@"
 	(cd rel && ../rebar generate -f target_dir=../dev/ejabberd_$@ overlay_vars=./reltool_vars/$@_vars.config)
@@ -55,6 +58,24 @@ deps_dev:
 
 devclean:
 	rm -rf dev/*
+
+$(PRODUCTIONNODES): rebar deps compile deps_production
+	@echo "building $@"
+	(cd rel && ../rebar generate -f target_dir=../production/ejabberd_$@ overlay_vars=./reltool_vars/$@_vars.config)
+	cp apps/ejabberd/src/*.erl production/ejabberd_$@/lib/ejabberd-2.1.8/ebin/
+ifeq ($(shell uname), Linux)
+	cp -R `dirname $(shell readlink -f $(shell which erl))`/../lib/tools-* production/ejabberd_$@/lib/
+else
+	cp -R `which erl`/../../lib/tools-* production/ejabberd_$@/lib/
+endif
+
+deps_production:
+	mkdir -p production
+	cp rel/files/test_cert.pem /tmp/server.pem
+	cp rel/files/sample_external_auth.py /tmp
+
+productionclean:
+	rm -rf production/*
 
 generate_snmp_header: apps/ejabberd/include/EJABBERD-MIB.hrl
 
