@@ -13,16 +13,13 @@
 -import(sha1, [hexstring/1]).
 
 -export([start/1,
-         stop/1,
          compare_encoded_and_plain_password/2,
          mongo_user_exists/1,
          mongo_check_password/3,
          mongo_check_password/4]).
 
 % functions used by ejabberd_auth
--export([login/2,
-         store_type/0,
-         set_password/3,
+-export([set_password/3,
          check_password/3,
          check_password/5,
          try_register/3,
@@ -53,10 +50,10 @@ start(Host) ->
     mongodb:connect(xmpp_mongo),
     ok.
 
-stop(Host) ->
-    ?INFO_MSG("Module: ~p stoping...", [?MODULE]),
-    mongodb:deleteConnection(xmpp_mongo),
-    ok.
+% stop(Host) ->
+%     ?INFO_MSG("Module: ~p stoping...", [?MODULE]),
+%     mongodb:deleteConnection(xmpp_mongo),
+%     ok.
 
 
 %%%
@@ -64,17 +61,30 @@ stop(Host) ->
 %%%
 
 plain_password_required() -> 
-    true.
+    false.
 
-store_type() ->
-    external.
+check_password(User, Server, Password) ->
+    ?INFO_MSG("~nUser: ~p~nServer: ~p~nPassword: ~p~n", [User, Server, Password]),
+    mongo_check_password(User, Password, Server).
 
-check_password(User, _Server, Password) ->
-    ?INFO_MSG("~nUser: ~p~nServer: ~p~nPassword: ~p~n", [User, _Server, Password]),
-    mongo_check_password(User, Password, _Server).
+check_password(User, Server, Password, Digest, DigestGen) ->
+    Data_userprofile_password = get_password(User, Server),
 
-check_password(User, Server, Password, _Digest, _DigestGen) ->
-    check_password(User, Server, Password).
+    DigRes = if
+         Digest /= <<>> ->
+             Digest == DigestGen(Data_userprofile_password);
+         true ->
+             false
+         end,
+    if DigRes ->
+        true;
+       true ->
+        (Data_userprofile_password == Password) and (Password /= <<>>)
+    end.
+    
+    % Digest == DigestGen(Data_userprofile_password).
+
+
 
 is_user_exists(User, _Server) ->
     mongo_user_exists(User).
@@ -95,16 +105,23 @@ get_password(User, Server) ->
     get_password_s(User, Server).
 
 get_password_s(User, Server) ->
-    "".
+    DB_dbname = list_to_binary(ejabberd_config:get_local_option({mongodb_djangouser_db, Server})),
+    DBConnection = mongoapi:new(xmpp_mongo, DB_dbname),
+
+    {ok, Data_authuser_list} = DBConnection:find(<<"auth_user">>, [{<<"username">>, User}], undefined, 0, 1),
+    Data_authuser = lists:nth(1, Data_authuser_list),
+    Data_authuser_oid = proplists:get_value(<<"_id">>, Data_authuser),
+    {ok, Data_userprofile_list} = DBConnection:find(<<"user_profiles_userprofile">>, [{<<"user_id">>, Data_authuser_oid}], undefined, 0, 1),
+    Data_userprofile = lists:nth(1, Data_userprofile_list),
+    Data_userprofile_password = proplists:get_value(<<"xmpp_internal_key">>, Data_userprofile),
+    Data_userprofile_password.
+
 
 remove_user(_,_) ->
     {error, not_allowed}.
 
 remove_user(_,_,_) ->
     {error, not_allowed}.
-
-login(User, Server) ->
-    true.
 
 %%%
 %%% Custom functions
