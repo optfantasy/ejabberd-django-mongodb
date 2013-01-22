@@ -37,6 +37,8 @@
          remove_attr/2,
          make_jid/3,
          make_jid/1,
+         string_to_jid/1,
+         jid_to_string/1,
          binary_to_jid/1,
          jid_to_binary/1,
          is_nodename/1,
@@ -50,6 +52,7 @@
          iq_query_or_response_info/1,
          iq_to_xml/1,
          parse_xdata_submit/1,
+         tolower/1,
          timestamp_to_iso/1, % TODO: Remove once XEP-0091 is Obsolete
          timestamp_to_xml/4,
          timestamp_to_xml/1, % TODO: Remove once XEP-0091 is Obsolete
@@ -276,24 +279,87 @@ jid_to_binary({Node, Server, Resource}) ->
          end,
     S3.
 
+string_to_jid(J) ->
+    string_to_jid1(J, "").
+
+string_to_jid1([$@ | _J], "") ->
+    error;
+string_to_jid1([$@ | J], N) ->
+    string_to_jid2(J, lists:reverse(N), "");
+string_to_jid1([$/ | _J], "") ->
+    error;
+string_to_jid1([$/ | J], N) ->
+    string_to_jid3(J, "", lists:reverse(N), "");
+string_to_jid1([C | J], N) ->
+    string_to_jid1(J, [C | N]);
+string_to_jid1([], "") ->
+    error;
+string_to_jid1([], N) ->
+    make_jid("", lists:reverse(N), "").
+
+%% Only one "@" is admitted per JID
+string_to_jid2([$@ | _J], _N, _S) ->
+    error;
+string_to_jid2([$/ | _J], _N, "") ->
+    error;
+string_to_jid2([$/ | J], N, S) ->
+    string_to_jid3(J, N, lists:reverse(S), "");
+string_to_jid2([C | J], N, S) ->
+    string_to_jid2(J, N, [C | S]);
+string_to_jid2([], _N, "") ->
+    error;
+string_to_jid2([], N, S) ->
+    make_jid(N, lists:reverse(S), "").
+
+string_to_jid3([C | J], N, S, R) ->
+    string_to_jid3(J, N, S, [C | R]);
+string_to_jid3([], N, S, R) ->
+    make_jid(N, S, lists:reverse(R)).
+
+jid_to_string(#jid{user = User, server = Server, resource = Resource}) ->
+    jid_to_string({User, Server, Resource});
+jid_to_string({Node, Server, Resource}) ->
+    S1 = case Node of
+         "" ->
+         "";
+         _ ->
+         Node ++ "@"
+     end,
+    S2 = S1 ++ Server,
+    S3 = case Resource of
+         "" ->
+         S2;
+         _ ->
+         S2 ++ "/" ++ Resource
+     end,
+    S3.
+
 is_nodename([]) ->
     false;
 is_nodename(J) ->
     nodeprep(J) /= error.
 
--define(LOWER(Char),
-        if
-            Char >= $A, Char =< $Z ->
-                Char + 32;
-            true ->
-                Char
-        end).
+tolower([C | Cs]) ->
+  if
+      C >= $A, C =< $Z ->
+          [C + 32 | tolower(Cs)];
+      true ->
+          [C | tolower(Cs)]
+  end;
+tolower([]) ->
+  [].
 
 nodeprep(S) when is_binary(S), size(S) < 1024 ->
     R = stringprep:nodeprep(S),
     if
         size(R) < 1024 -> R;
         true -> error
+    end;
+nodeprep(S) when is_list(S), length(S) < 1024 ->
+    R = stringprep:nodeprep(S),
+    if
+    size(R) < 1024 -> R;
+    true -> error
     end;
 nodeprep(_) ->
     error.
@@ -303,6 +369,12 @@ nameprep(S) when is_binary(S), size(S) < 1024 ->
     if
         size(R) < 1024 -> R;
         true -> error
+    end;
+nameprep(S) when is_list(S), length(S) < 1024 ->
+    R = stringprep:nameprep(S),
+    if
+    size(R) < 1024 -> R;
+    true -> error
     end;
 nameprep(_) ->
     error.
