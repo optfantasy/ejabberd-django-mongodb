@@ -239,12 +239,6 @@ save_packet(From, To, Packet, Type, Attrs) ->
 			?DEBUG("not logging empty message from ~p~n~n",[From]),
 			ok;
 		_ ->
-                        % TODO: How to directly handle string (list) to implement these JID operations ?			
-    			% FromJid = exmpp_jid:prep_node_as_list(From),
-			% FromHost = exmpp_jid:prep_domain_as_list(From),
-			% FromResource = exmpp_jid:prep_resource_as_list(From),
-			% ToJid = exmpp_jid:prep_node_as_list(To),
-			% ToHost = exmpp_jid:prep_domain_as_list(To),
 
             % ?INFO_MSG("==---------from to===== from:~p~n~n to:~p~n~n", [From, To]),
             FromJid = From#jid.luser,
@@ -275,27 +269,35 @@ save_packet(From, To, Packet, Type, Attrs) ->
                 {<<"_doing_timeline">>, false}
             ],
 
-            case Type of
-                <<"groupchat">> ->
-                    ets:insert(gulu_group_timestamp, {prepare(ToJid), Timestamp}),
-                    ?INFO_MSG("ready to send... ~p~n~n", [Rec]),
-                    Proc = gen_mod:get_module_proc(FromHost, ?PROCNAME),
-                    ?INFO_MSG("ready to send...proc ~p~n~n", [Proc]),
-                    case CombineUUID of
-                        <<"">> ->
-                            gen_server:cast(Proc, {save, Rec}),
-                            gen_server:cast(Proc, {apns, binary_to_list(MsgUUID), unicode:characters_to_list(Body), FromJid}),
-                            ?INFO_MSG("======ready to sended ~p~n~n", [Proc]);
-                        _ ->
-                            % CombineBody = exmpp_xml:get_cdata(exmpp_xml:get_element(Packet, "combinebody")),
-                            CombineBody = xml:get_path_s(Packet, [{elem, <<"combinebody">>}, cdata]),
 
-                            gen_server:cast(Proc, {update, Rec, CombineUUID, CombineBody, Timestamp, MicroTime}),
-                            gen_server:cast(Proc, {apns, binary_to_list(CombineUUID), unicode:characters_to_list(Body), FromJid}),
-                            ?INFO_MSG("======ready to update ~p ~p ~p~n~n", [Proc, CombineUUID, CombineBody])
+            case is_pubsub(prepare_list(ToJid)) of
+                false ->
+
+                    case Type of
+                        <<"groupchat">> ->
+                            ets:insert(gulu_group_timestamp, {prepare(ToJid), Timestamp}),
+                            ?INFO_MSG("ready to send... ~p~n~n", [Rec]),
+                            Proc = gen_mod:get_module_proc(FromHost, ?PROCNAME),
+                            ?INFO_MSG("ready to send...proc ~p~n~n", [Proc]),
+                            case CombineUUID of
+                                <<"">> ->
+                                    gen_server:cast(Proc, {save, Rec}),
+                                    gen_server:cast(Proc, {apns, binary_to_list(MsgUUID), unicode:characters_to_list(Body), FromJid}),
+                                    ?INFO_MSG("======ready to sended ~p~n~n", [Proc]);
+                                _ ->
+                                    % CombineBody = exmpp_xml:get_cdata(exmpp_xml:get_element(Packet, "combinebody")),
+                                    CombineBody = xml:get_path_s(Packet, [{elem, <<"combinebody">>}, cdata]),
+
+                                    gen_server:cast(Proc, {update, Rec, CombineUUID, CombineBody, Timestamp, MicroTime}),
+                                    gen_server:cast(Proc, {apns, binary_to_list(CombineUUID), unicode:characters_to_list(Body), FromJid}),
+                                    ?INFO_MSG("======ready to update ~p ~p ~p~n~n", [Proc, CombineUUID, CombineBody])
+                            end;
+                        _ ->
+                            ?DEBUG("only logging groupchat: typr = ~p",[Type]),
+                            ok
                     end;
-                _ ->
-                    ?DEBUG("only logging groupchat: typr = ~p",[Type]),
+
+                true ->
                     ok
             end
 	end.
@@ -315,7 +317,13 @@ apns_by_django(MSG_UUID, BODY, FromJid, API_URL) ->
             "application/x-www-form-urlencoded",
             Data
         }, [], []).
-    
+
+is_pubsub(Val) ->
+    case re:run(Val, "-pubsub$", []) of
+        {match, _} -> true;
+        _ -> false
+    end.
+
 flush() ->
     flush(now_us(erlang:now()), [], ets:next(?MODULE, 0)).
 
@@ -344,6 +352,16 @@ prepare(Val) ->
             <<"">>;
 	    Val when is_list(Val) ->
 		    list_to_binary(Val);
+        _ -> 
+            Val
+    end.
+
+prepare_list(Val) ->
+    case Val of
+        undefined -> 
+            "";
+        Val when is_binary(Val) ->
+            binary_to_list(Val);
         _ -> 
             Val
     end.
