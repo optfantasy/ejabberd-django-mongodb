@@ -15,8 +15,7 @@
 -export([start/1,
          compare_encoded_and_plain_password/2,
          mongo_user_exists/1,
-         mongo_check_password/3,
-         mongo_check_password/4]).
+         mongo_check_password/3]).
 
 % functions used by ejabberd_auth
 -export([set_password/3,
@@ -64,7 +63,7 @@ plain_password_required() ->
     false.
 
 check_password(User, Server, Password) ->
-    ?INFO_MSG("~nUser: ~p~nServer: ~p~nPassword: ~p~n", [User, Server, Password]),
+    % ?INFO_MSG("~nUser: ~p~nServer: ~p~nPassword: ~p~n", [User, Server, Password]),
     mongo_check_password(User, Password, Server).
 
 check_password(User, Server, Password, Digest, DigestGen) ->
@@ -150,34 +149,7 @@ mongo_user_exists(User) ->
 
 
 mongo_check_password(User, Password, Server) ->
-
-    DB_dbname = list_to_binary(ejabberd_config:get_local_option({mongodb_djangouser_db, Server})),
-    DBConnection = mongoapi:new(xmpp_mongo, DB_dbname),
-    Password_parsed_list = string:tokens(make_list(Password), "#"),
-    case length(Password_parsed_list) of
-        1 -> mongo_check_password(User, Password, plain, DBConnection);
-        2 -> mongo_check_password(User, Password, internal_key, DBConnection)
-    end.
-
-mongo_check_password(User, Password, internal_key, DBConnection) -> 
-    Password_parsed = lists:nth(2, string:tokens(make_list(Password), "#")),
-    %%% Notice: Password appeared here is refered to xmpp_internal_key in user_profile module.
-    {ok, Data_authuser_list} = DBConnection:find(<<"auth_user">>, [{<<"username">>, User}], undefined, 0, 1),
-    Data_authuser = lists:nth(1, Data_authuser_list),
-    Data_authuser_oid = proplists:get_value(<<"_id">>, Data_authuser),
-    {ok, Data_userprofile_list} = DBConnection:find(<<"user_profiles_userprofile">>, [{<<"user_id">>, Data_authuser_oid}], undefined, 0, 1),
-    Data_userprofile = lists:nth(1, Data_userprofile_list),
-    Data_userprofile_password = proplists:get_value(<<"xmpp_internal_key">>, Data_userprofile),
-    %?INFO_MSG("~p == ~p~n", [Data_userprofile_password, Password_parsed]),
-    Data_userprofile_password == list_to_binary(Password_parsed);
-
-mongo_check_password(User, Password, plain, DBConnection) ->
-    {ok, Data_authuser_list} = DBConnection:find(<<"auth_user">>, [{<<"username">>, User}], undefined, 0, 1),
-    Data_authuser = lists:nth(1, Data_authuser_list),
-    Data_authuser_password = proplists:get_value(<<"password">>, Data_authuser),
-    ?INFO_MSG("Auth result: ~p~n", [compare_encoded_and_plain_password(Data_authuser_password, Password)]),
-    compare_encoded_and_plain_password(Data_authuser_password, Password).
-
+    Password == get_password(User, Server).
 
 make_list(Val) ->
     case Val of
