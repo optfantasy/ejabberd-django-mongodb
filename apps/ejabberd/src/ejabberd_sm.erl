@@ -52,7 +52,8 @@
          user_resources/2,
          get_session_pid/3,
          get_user_info/3,
-         get_user_ip/3
+         get_user_ip/3,
+         pubsub_message/5
         ]).
 
 %% gen_server callbacks
@@ -648,6 +649,12 @@ commands() ->
      %%                    module = ?MODULE, function = connected_users_number,
      %%                    args = [],
      %%                    result = {num_sessions, integer}},
+     #ejabberd_commands{name = pubsub_message, tags = [pubsub],
+        desc = "Publish message to specific users",
+        module = ?MODULE, function = pubsub_message,
+        args = [{localuser, string}, {localserver, string},
+            {key, string}, {users, string}, {message, string}],
+        result = {res, rescode}},
      #ejabberd_commands{name = user_resources,
                         tags = [session],
                         desc = "List user's connected resources",
@@ -659,6 +666,30 @@ commands() ->
 user_resources(User, Server) ->
     Resources =  get_user_resources(list_to_binary(User), list_to_binary(Server)),
     lists:sort(Resources).
+
+
+pubsub_message(LocalUser, LocalServer, Key, Users, Message) ->
+    USERS = re:split(Users, ",", [{return, list}]),
+    send_to_users(USERS, LocalServer, Message).
+
+send_to_users(Users, Server, Message) ->
+    case Users of
+        [User | Others] ->
+            send_message(User, Server, Message),
+            send_to_users(Others, Server, Message);
+        [] ->
+            ok
+    end.
+
+send_message(User, Server, Message) ->
+    % io:format("========~p ~p ~p ~n",[User, Server, Message]),
+    LUser = list_to_binary(User),
+    LServer = list_to_binary(Server),
+    ToJID=jlib:make_jid(LUser,LServer,<<"">>),
+    FromJID=jlib:make_jid(<<"guluxmppadmin">>,LServer,<<"">>),
+    % route_message(FromJID, ToJID,{xmlelement,<<"message">>,[{<<"to">>,<<"gage@localhost">>},{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,<<"cccc">>}]}]}),
+    ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
+    ok.
 
 -spec sm_backend(atom()) -> string().
 sm_backend(Backend) ->
