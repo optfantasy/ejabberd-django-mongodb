@@ -47,6 +47,7 @@
 	 install_fallback_mnesia/1,
 	 dump_to_textfile/1, dump_to_textfile/2,
 	 mnesia_change_nodename/4,
+     mnesia_slave_dbsync/1,
 	 restore/1 % Still used by some modules
 	]).
 
@@ -193,6 +194,12 @@ commands() ->
 			desc = "Restore the database from text file (only Mnesia)",
 			module = ?MODULE, function = load_mnesia,
 			args = [{file, string}], result = {res, restuple}},
+
+     #ejabberd_commands{name = mnesia_slave_dbsync, tags = [mnesia],
+			desc = "(Customized) Sync mnesia db",
+			module = ?MODULE, function = mnesia_slave_dbsync,
+			args = [{nodename, string}], result = {res, restuple}},
+
      #ejabberd_commands{name = install_fallback, tags = [mnesia],
 			desc = "Install the database from a fallback file (only Mnesia)",
 			module = ?MODULE, function = install_fallback_mnesia,
@@ -582,3 +589,13 @@ mnesia_change_nodename(FromString, ToString, Source, Target) ->
 		{[Other], Acc}
 	end,
     mnesia:traverse_backup(Source, Target, Convert, switched).
+
+
+
+mnesia_slave_dbsync(L_FirstNode) ->
+    FirstNode = list_to_atom(L_FirstNode),
+    mnesia:stop(),
+    mnesia:delete_schema([node()]),  
+    mnesia:start(),  
+    mnesia:change_config(extra_db_nodes, [FirstNode]),  
+    mnesia:change_table_copy_type(schema, node(), disc_copies).
