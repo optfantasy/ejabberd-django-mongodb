@@ -116,3 +116,18 @@ rebar:
 	wget -q http://cloud.github.com/downloads/basho/rebar/rebar
 	chmod u+x rebar
 
+
+# The following stuffs are for generating settings from our master or slave templates.
+# Usage:
+# 	make generate_settings <type> <node_name>
+# 	<type> :: "master" | "slave"
+# 	<node_name> :: <string>
+TMPL_DIR = ./rel/reltool_vars/templates
+IN_TMPL  = master # must be either "master" or "slave".
+OUT_TMPL = production1 # the node name
+IN_TMPL_PATH  = $(TMPL_DIR)/template_$(IN_TMPL)_vars.config
+OUT_TMPL_PATH = $(TMPL_DIR)/../$(OUT_TMPL)_vars.config
+
+generate_setting:
+	cp $(IN_TMPL_PATH) $(OUT_TMPL_PATH)
+
