@@ -71,8 +71,6 @@ endif
 
 deps_production:
 	mkdir -p production
-	cp rel/files/test_cert.pem /tmp/server.pem
-	cp rel/files/sample_external_auth.py /tmp
 
 productionclean:
 	rm -rf production/*
