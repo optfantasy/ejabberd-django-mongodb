@@ -1,0 +1,13 @@
+#!/usr/bin/env ipython
+servers = !cat deploy_table
+
+master_servers = filter(lambda x:x.split(',')[1] == 'master', servers)
+slave_servers = filter(lambda x:x.split(',')[1] == 'slave', servers)
+
+
+print "Generating totally %s configurations for slave servers." % len(slave_servers)
+for item in slave_servers:
+    hostname = item.split(',')[0]
+    !scripts/gen_slave_setting.sh {hostname}
+
+
