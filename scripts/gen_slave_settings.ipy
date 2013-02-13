@@ -1,13 +1,16 @@
 #!/usr/bin/env ipython
 servers = !cat deploy_table
 
-master_servers = filter(lambda x:x.split(',')[1] == 'master', servers)
-slave_servers = filter(lambda x:x.split(',')[1] == 'slave', servers)
+master_servers = [ x.split(',')[0] for x in servers if x.split('1') == 'master' ]
+slave_servers = [ x.split(',')[0] for x in servers if x.split('1') == 'slave' ]
+all_servers = master_servers + slave_servers
 
+print "Generating master configurations for master server."
+!scripts/gen_master_setting.sh 
 
 print "Generating totally %s configurations for slave servers." % len(slave_servers)
-for item in slave_servers:
-    hostname = item.split(',')[0]
+for hostname in slave_servers:
     !scripts/gen_slave_setting.sh {hostname}
 
-
+print "Start building the production release files..."
+!make productionrel PRODUCTIONNODES="{all_servers.join(' ')}"
