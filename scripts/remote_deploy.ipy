@@ -31,7 +31,8 @@ for server in slave_servers:
 Generate configurations for each instance
 """
 print "Generating master configurations for master server."
-!scripts/gen_master_setting.sh 
+for hostname in master_servers:
+    !scripts/gen_master_setting.sh {hostname}
 
 print "Generating totally %s configurations for slave servers." % len(slave_servers)
 for hostname in slave_servers:
