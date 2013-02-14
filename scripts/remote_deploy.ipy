@@ -8,10 +8,10 @@ print "Fetching server info from deploy table..."
 servers = !cat deploy_table
 def reader_filter(line):
     if line[0] == "#":
-        return false
+        return False
     if not line:
-        return false
-    return true
+        return False
+    return True
 
 servers = filter(reader_filter, servers)
 
