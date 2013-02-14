@@ -6,6 +6,14 @@ Fetch the list of master and private servers
 """
 print "Fetching server info from deploy table..."
 servers = !cat deploy_table
+def reader_filter(line):
+    if line[0] == "#":
+        return false
+    if not line:
+        return false
+    return true
+
+servers = filter(reader_filter, servers)
 
 master_servers = [ x.split(',')[0] for x in servers if x.split(',')[1] == 'master' ]
 slave_servers = [ x.split(',')[0] for x in servers if x.split(',')[1] == 'slave' ]
