@@ -7,9 +7,9 @@ Fetch the list of master and private servers
 print "Fetching server info from deploy table..."
 servers = !cat deploy_table
 def reader_filter(line):
-    if line[0] == "#":
-        return False
     if not line:
+        return False
+    if line[0] == "#":
         return False
     return True
 
