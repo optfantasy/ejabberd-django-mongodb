@@ -1,5 +1,5 @@
 #!/usr/bin/env ipython
-
+import sh
 
 """
 Fetch the list of master and private servers
@@ -54,7 +54,11 @@ Deliver releases to each machines
 print "Deliver fresh release files to machines..."
 
 for server in all_servers:
-    !scp -r production/{server} ejabberd@{server}:~/esl-ejabberd
+    !scp -r production/ejabberd_{server} ejabberd@{server}:~/esl-ejabberd
+
+
+
+
 
 
 """
