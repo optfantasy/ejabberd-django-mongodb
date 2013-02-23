@@ -689,6 +689,7 @@ send_message(User, Server, Message) ->
     FromJID=jlib:make_jid(<<"guluxmppadmin">>,LServer,<<"">>),
     % route_message(FromJID, ToJID,{xmlelement,<<"message">>,[{<<"to">>,<<"gage@localhost">>},{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,<<"cccc">>}]}]}),
     ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
+    ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"chat">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
     ok.
 
 -spec sm_backend(atom()) -> string().
