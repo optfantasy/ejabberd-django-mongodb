@@ -1,0 +1,72 @@
+#!/usr/bin/env ipython
+import sh
+
+"""
+Fetch the list of master and private servers
+"""
+print "Fetching server info from deploy table..."
+servers = !cat deploy_table.csv	
+# snowmantw: pure csv format file required. 
+#servers = !cat deploy_table
+def reader_filter(line):
+    if not line:
+        return False
+    if line[0] == "#":
+        return False
+    return True
+
+servers = filter(reader_filter, servers)
+
+master_servers = [ x.split(',')[0] for x in servers if x.split(',')[1] == 'master' ]
+slave_servers = [ x.split(',')[0] for x in servers if x.split(',')[1] == 'slave' ]
+all_servers = master_servers + slave_servers
+
+print "Master host:"
+for server in master_servers:
+    print "  %s" % server
+print "Slave hosts:"
+for server in slave_servers:
+    print "  %s" % server
+
+
+"""
+Generate configurations for each instance
+"""
+print "Generating master configurations for master server."
+for hostname in master_servers:
+    !scripts/gen_master_setting.sh {hostname}
+
+print "Generating totally %s configurations for slave servers." % len(slave_servers)
+for hostname in slave_servers:
+    !scripts/gen_slave_setting.sh {hostname}
+
+
+"""
+Build the release bytecodes and runtime
+"""
+print "Start building the production release files..."
+production_servers = ' '.join(all_servers)
+!make PRODUCTIONNODES="{production_servers}" productionrel
+
+
+
+"""
+Deliver releases to each machines
+"""
+print "Deliver fresh release files to machines..."
+
+for server in all_servers:
+    !scp -r production/ejabberd_{server} ejabberd@{server}:~/esl-ejabberd
+
+
+
+
+
+
+"""
+Reboot all instances of the ejabberd cluster
+"""
+print "Restarting servers..."
+
+
+
