@@ -41,6 +41,16 @@ testrel: $(DEVNODES) $(TESTNODES)
 
 productionrel: $(PRODUCTIONNODES)
 
+productionrel_node: rebar deps compile deps_production
+	echo "building $(TARGET_PRODUCT)"
+	(cd rel && ../rebar generate -f target_dir=../production/ejabberd_$(TARGET_PRODUCT) overlay_vars=./reltool_vars/$(TARGET_PRODUCT)_vars.config)
+	cp apps/ejabberd/src/*.erl production/ejabberd_$(TARGET_PRODUCT)/lib/ejabberd-2.1.8/ebin/
+ifeq ($(shell uname), Linux)
+	cp -R `dirname $(shell readlink -f $(shell which erl))`/../lib/tools-* production/ejabberd_$(TARGET_PRODUCT)/lib/
+else
+	cp -R `which erl`/../../lib/tools-* production/ejabberd_$(TARGET_PRODUCT)/lib/
+endif
+
 $(DEVNODES) $(TESTNODES): rebar deps compile deps_dev
 	@echo "building $@"
 	(cd rel && ../rebar generate -f target_dir=../dev/ejabberd_$@ overlay_vars=./reltool_vars/$@_vars.config)

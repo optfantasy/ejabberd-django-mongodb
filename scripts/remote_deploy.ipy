@@ -5,7 +5,9 @@ import sh
 Fetch the list of master and private servers
 """
 print "Fetching server info from deploy table..."
-servers = !cat deploy_table
+servers = !cat deploy_table.csv	
+# snowmantw: pure csv format file required. 
+#servers = !cat deploy_table
 def reader_filter(line):
     if not line:
         return False
