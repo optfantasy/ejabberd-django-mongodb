@@ -14,7 +14,7 @@
 
 -export([start/1,
          compare_encoded_and_plain_password/2,
-         mongo_user_exists/1,
+         mongo_user_exists/2,
          mongo_check_password/3]).
 
 % functions used by ejabberd_auth
@@ -85,8 +85,8 @@ check_password(User, Server, Password, Digest, DigestGen) ->
 
 
 
-is_user_exists(User, _Server) ->
-    mongo_user_exists(User).
+is_user_exists(User, Server) ->
+    mongo_user_exists(User, Server).
 
 set_password(_User, _Server, _Password) ->
     {error, not_allowed}.
@@ -106,15 +106,42 @@ get_password(User, Server) ->
 get_password_s(User, Server) ->
     DB_dbname = list_to_binary(ejabberd_config:get_local_option({mongodb_djangouser_db, Server})),
     DBConnection = mongoapi:new(xmpp_mongo, DB_dbname),
-
-    {ok, Data_authuser_list} = DBConnection:find(<<"auth_user">>, [{<<"username">>, User}], undefined, 0, 1),
-    Data_authuser = lists:nth(1, Data_authuser_list),
-    Data_authuser_oid = proplists:get_value(<<"_id">>, Data_authuser),
-    {ok, Data_userprofile_list} = DBConnection:find(<<"user_profiles_userprofile">>, [{<<"user_id">>, Data_authuser_oid}], undefined, 0, 1),
-    Data_userprofile = lists:nth(1, Data_userprofile_list),
-    Data_userprofile_password = proplists:get_value(<<"xmpp_internal_key">>, Data_userprofile),
-    Data_userprofile_password.
-
+    try DBConnection:find(<<"auth_user">>, [{<<"username">>, User}], undefined, 0, 1) of
+        {ok, []} -> 
+            try DBConnection:find(<<"auth_user">>, [{<<"_id">>, {oid,User}}], undefined, 0, 1) of
+                {ok, []} ->
+                    {error, not_allowed};
+                {ok, Data_authuser_list} ->
+                    Data_authuser = lists:nth(1, Data_authuser_list),
+                    Data_authuser_oid = proplists:get_value(<<"_id">>, Data_authuser),
+                    {ok, Data_userprofile_list} = DBConnection:find(<<"user_profiles_userprofile">>, [{<<"user_id">>, Data_authuser_oid}], undefined, 0, 1),
+                    case Data_userprofile_list of
+                        [] ->
+                            {error, not_allowed};
+                        _ ->
+                            Data_userprofile = lists:nth(1, Data_userprofile_list),
+                            Data_userprofile_password = proplists:get_value(<<"xmpp_internal_key">>, Data_userprofile),
+                            Data_userprofile_password
+                    end
+            catch _ ->
+                {error, not_allowed}
+            end;
+        {ok, Data_authuser_list} ->
+            Data_authuser = lists:nth(1, Data_authuser_list),
+            Data_authuser_oid = proplists:get_value(<<"_id">>, Data_authuser),
+            {ok, Data_userprofile_list} = DBConnection:find(<<"user_profiles_userprofile">>, [{<<"user_id">>, Data_authuser_oid}], undefined, 0, 1),
+            case Data_userprofile_list of
+                [] ->
+                    {error, not_allowed};
+                _ ->
+                    Data_userprofile = lists:nth(1, Data_userprofile_list),
+                    Data_userprofile_password = proplists:get_value(<<"xmpp_internal_key">>, Data_userprofile),
+                    Data_userprofile_password
+            end
+    catch _ ->
+        {error, not_allowed}
+    end.
+    
 
 remove_user(_,_) ->
     {error, not_allowed}.
@@ -138,10 +165,11 @@ compare_encoded_and_plain_password(Encoded_P, Plain_P) ->
     
 %%% TODO: mongo_user_exists()
 
-mongo_user_exists(User) ->
+mongo_user_exists(User, Server) ->
     %?INFO_MSG("mongo_user_exists ~n", []),
-    Conn = mongoapi:new(xmpp_mongo, <<"gulu">>),
-    {ok, Data} = Conn:find(<<"auth_user">>, [{<<"username">>, User}], undefined, 0, 1),
+    DB_dbname = list_to_binary(ejabberd_config:get_local_option({mongodb_djangouser_db, Server})),
+    Conn = mongoapi:new(xmpp_mongo, DB_dbname),
+    {ok, Data} = Conn:find(auth_user, [{'or', [{"username", User}, {"_id", {oid,User}}]}], undefined, 0, 1),
     case length(Data) of
         0 -> false;
         1 -> true

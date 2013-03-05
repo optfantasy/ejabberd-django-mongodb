@@ -670,26 +670,26 @@ user_resources(User, Server) ->
 
 pubsub_message(LocalUser, LocalServer, Key, Users, Message) ->
     USERS = re:split(Users, ",", [{return, list}]),
-    send_to_users(USERS, LocalServer, Message).
+    send_to_users(LocalUser,USERS, LocalServer, Message).
 
-send_to_users(Users, Server, Message) ->
+send_to_users(LocalUser, Users, Server, Message) ->
     case Users of
         [User | Others] ->
-            send_message(User, Server, Message),
-            send_to_users(Others, Server, Message);
+            send_message(LocalUser, User, Server, Message),
+            send_to_users(LocalUser, Others, Server, Message);
         [] ->
             ok
     end.
 
-send_message(User, Server, Message) ->
+send_message(LocalUser, User, Server, Message) ->
     % io:format("========~p ~p ~p ~n",[User, Server, Message]),
     LUser = list_to_binary(User),
     LServer = list_to_binary(Server),
     ToJID=jlib:make_jid(LUser,LServer,<<"">>),
-    FromJID=jlib:make_jid(<<"guluxmppadmin">>,LServer,<<"">>),
+    FromJID=jlib:make_jid(LocalUser,LServer,<<"">>),
     % route_message(FromJID, ToJID,{xmlelement,<<"message">>,[{<<"to">>,<<"gage@localhost">>},{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,<<"cccc">>}]}]}),
     ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
-    ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"chat">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
+%    ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"chat">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
     ok.
 
 -spec sm_backend(atom()) -> string().
