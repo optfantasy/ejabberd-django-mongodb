@@ -8,23 +8,22 @@
 ]).
 
 -include("ejabberd.hrl").
+-include_lib("apns/include/apns.hrl").
 
 -export([init/1, start_link/2, handle_call/3, handle_cast/2, handle_info/2,
     terminate/2, code_change/3]).
 
 %% gen_mod callbacks
 -define(PROCNAME, ?MODULE).
--record(apns, {
-    apple_host = "gateway.sandbox.push.apple.com",
-    apple_port = 2195,
-    cert_file = "../etc/certs/mycert_dev.pem",
-    key_file = undefined,
-    cert_password = undefined,
-    timeout = 30000,
-    feedback_port = 2196,
-    feedback_host = "feedback.sandbox.push.apple.com",
-    feedback_timeout = 18000000
+-record(state, {
+    apnspid = undefined
 }).
+
+handle_apns_error(MsgId, Status) ->
+    ?INFO_MSG("error: ~p - ~p~n", [MsgId, Status]).
+
+handle_apns_delete_subscription(Data) ->
+    ?INFO_MSG("delete subscription: ~p~n", [Data]).
 
 start(Host, Opts) ->
 
@@ -50,16 +49,8 @@ start_link(Host, Opts) ->
     gen_server:start_link({local, Proc}, ?MODULE, [Host, Opts], []).
 
 init([_Host, Opts]) ->
-    inets:start(),
     ?INFO_MSG("***===== INIT apns", []),
-    
-    APPLE_HOST = gen_mod:get_opt(apple_host, Opts, "gateway.sandbox.push.apple.com"),
-    CERT_FILE = gen_mod:get_opt(cert_file, Opts, "../etc/certs/mycert_dev.pem"),
-    
-    {ok, #apns{
-        apple_host = APPLE_HOST,
-        cert_file = CERT_FILE
-    }}.
+    {ok, #state{}}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -72,9 +63,28 @@ handle_call(Request, _From, State) ->
     ?INFO_MSG("Unexpected call: ~p~n~n", [Request]),
     {reply, ok, State}.
 
-handle_cast({send, Token, BODY}, State) ->
+handle_cast({send, Token, BODY}, State=#state{apnspid=CurrentPid}) ->
     ?INFO_MSG("push Message: ~p ~p ~p ~n~n", [Token, BODY, State]),
-    {noreply, State}.
+
+    APNSPid = case CurrentPid of
+        undefined ->
+            CONN = apns:connect(apnsconn, fun handle_apns_error/2, fun handle_apns_delete_subscription/1),
+            Pid = case CONN of
+                {ok, Ppid} -> Ppid;
+                {error, {already_started, Ppid}} -> Ppid;
+                {error, Reason} ->
+                    ?DEBUG("apns connect error ~p ~n~n", [Reason]),
+                    {error, Reason}
+            end;
+        Pid ->
+            Pid
+    end,
+    apns:send_message(apnsconn, #apns_msg{
+      alert  = BODY,
+      sound  = "default",
+      device_token = Token
+    }),
+    {noreply, State#state{apnspid=APNSPid}}.
 
 handle_info(_Info, State) ->
     {noreply, State}.
