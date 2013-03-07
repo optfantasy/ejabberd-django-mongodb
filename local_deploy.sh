@@ -15,7 +15,7 @@ execute_script_remote() {
     local REMOTE_HOST=$3
     local ARGUMENTS=${@:4}
 
-    cat $SCRIPT_PATH | ssh $REMOTE_USER:$REMOTE_HOST "cat > /tmp/$TEMP_SCRIPT_NAME ; chmod 755 /tmp/$TEMP_SCRIPT_NAME ; /tmp/$TEMP_SCRIPT_NAME $ARGUMENTS"
+    cat $SCRIPT_PATH | ssh $REMOTE_USER@$REMOTE_HOST "cat > /tmp/$TEMP_SCRIPT_NAME ; chmod 755 /tmp/$TEMP_SCRIPT_NAME ; /tmp/$TEMP_SCRIPT_NAME $ARGUMENTS"
 }
 
 make productionclean
