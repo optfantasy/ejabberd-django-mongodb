@@ -8,10 +8,23 @@ PROXY_SETTING=~/nodes.csv
 PROXY_CMD=~/deploy_haproxy.sh
 
 make productionclean
-#make productionrel
-#scp -r production/ejabberd_production1 ubuntu@empty:~/
-awk -F, '{print $1}' $DEPLOY_TABLE | xargs -i make productionrel_node TARGET_PRODUCT="{}"
-awk -F, '{print $1}' $DEPLOY_TABLE | xargs -i scp -r production/ejabberd_{} $USER@{}:~/
+
+# Stop all server nodes
+for TARGET_HOST in `awk -F, '{print $1}'`
+do
+    #stop server
+    ssh $USER:$TARGET_HOST 'bash -s' < scripts/stop_ejabberd.sh
+done
+
+# deploy and start nodes
+for TARGET_HOST in `awk -F, '{print $1}'`
+do
+    #deploy
+    make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
+    scp -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd
+    #start server
+    ssh $USER:$TARGET_HOST 'bash -s' < scripts/start_ejabberd.sh
+done
 
 # Proxy setting
 scp $DEPLOY_TABLE $PROXY_USER@$PROXY_HOST:$PROXY_SETTING

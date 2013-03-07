@@ -109,8 +109,18 @@ handle_call(Request, _From, State) ->
 	?INFO_MSG("Unexpected call: ~p~n~n", [Request]),
 	{reply, ok, State}.
 
-handle_cast({apns, MSG_UUID, BODY, FromJid}, S=#state{conn=_Conn, collection=_Coll, api_url=API_URL}) ->
+handle_cast({apns, MSG_UUID, BODY, FromJid, ToJid}, S=#state{conn=Conn, collection=_Coll, api_url=API_URL}) ->
     ?INFO_MSG("push Message: ~p ~p~n~n", [MSG_UUID, BODY]),
+    % {ok, Groups} = Conn:find("group_group", [{"_id", {oid, ToJid}}], undefined, 0, 1),
+    % case Groups of
+    %     [] ->
+    %         ?ERROR_MSG("======================================= no group: ~p~n~n~n", [ToJid]),
+    %         {error, no_group};
+    %     _ ->
+    %         Group = lists:nth(1, Groups),
+    %         Members = proplists:get_value(<<"members">>, Group),
+    %         ?INFO_MSG("======================================= members: ~p~n~n~n", [Members])
+    % end,
     apns_by_django(MSG_UUID, BODY, FromJid, API_URL),
     {noreply, S};
 
@@ -282,14 +292,14 @@ save_packet(From, To, Packet, Type, Attrs) ->
                             case CombineUUID of
                                 <<"">> ->
                                     gen_server:cast(Proc, {save, Rec}),
-                                    gen_server:cast(Proc, {apns, binary_to_list(MsgUUID), unicode:characters_to_list(Body), FromJid}),
+                                    gen_server:cast(Proc, {apns, binary_to_list(MsgUUID), unicode:characters_to_list(Body), FromJid, ToJid}),
                                     ?INFO_MSG("======ready to sended ~p~n~n", [Proc]);
                                 _ ->
                                     % CombineBody = exmpp_xml:get_cdata(exmpp_xml:get_element(Packet, "combinebody")),
                                     CombineBody = xml:get_path_s(Packet, [{elem, <<"combinebody">>}, cdata]),
 
                                     gen_server:cast(Proc, {update, Rec, CombineUUID, CombineBody, Timestamp, MicroTime}),
-                                    gen_server:cast(Proc, {apns, binary_to_list(CombineUUID), unicode:characters_to_list(Body), FromJid}),
+                                    gen_server:cast(Proc, {apns, binary_to_list(CombineUUID), unicode:characters_to_list(Body), FromJid, ToJid}),
                                     ?INFO_MSG("======ready to update ~p ~p ~p~n~n", [Proc, CombineUUID, CombineBody])
                             end;
                         _ ->
