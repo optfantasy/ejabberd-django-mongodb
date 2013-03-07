@@ -44,7 +44,7 @@ do
 
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
     scp -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
-    ssh $USER@$TARGET_HOST "mv ejabberd ejabberd-old; mv ejabberd-new ejabberd && cp -r ejabberd-old/Mnesia* ejabberd"
+    ssh $USER@$TARGET_HOST "mv ejabberd ejabberd-old && cp -r ejabberd-old/Mnesia* ejabberd-new ; mv ejabberd-new ejabberd"
     #start server
     #ssh $USER:$TARGET_HOST 'bash -s' < scripts/start_ejabberd.sh
     execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
