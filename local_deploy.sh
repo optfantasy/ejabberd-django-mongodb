@@ -30,10 +30,14 @@ do
 done
 
 # deploy and start nodes
-for TARGET_LINE in `awk -F, '{print $1,$2}' $DEPLOY_TABLE`
+for TARGET_LINE in `cat $DEPLOY_TABLE`
 do
-    TARGET_HOST=$(echo $TARGET_LINE | awk -F, '{print $1}')
-    TARGET_TYPE=$(echo $TARGET_LINE | awk -F, '{print $2}')
+    export TARGET_LINE
+    TARGET_HOST=`echo $TARGET_LINE | awk -F, '{print $1}'`
+    TARGET_TYPE=`echo $TARGET_LINE | awk -F, '{print $2}'`
+
+    echo "TARGET_HOST: $TARGET_HOST"
+    echo "TARGET_TYPE: $TARGET_TYPE"
     #deploy
     make generate_setting IN_TMPL=$TARGET_TYPE OUT_TMPL=$TARGET_HOST
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
