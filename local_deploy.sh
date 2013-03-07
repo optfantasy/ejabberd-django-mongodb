@@ -22,7 +22,7 @@ execute_script_remote() {
 make productionclean
 
 # Stop all server nodes
-for TARGET_HOST in `awk -F, '{print $1}'`
+for TARGET_HOST in `awk -F, '{print $1}' $DEPLOY_TABLE`
 do
     #stop server
     #ssh $USER:$TARGET_HOST 'bash -s' < scripts/stop_ejabberd.sh
@@ -30,7 +30,7 @@ do
 done
 
 # deploy and start nodes
-for TARGET_HOST in `awk -F, '{print $1}'`
+for TARGET_HOST in `awk -F, '{print $1}' $DEPLOY_TABLE`
 do
     #deploy
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
