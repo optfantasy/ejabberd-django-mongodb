@@ -30,9 +30,12 @@ do
 done
 
 # deploy and start nodes
-for TARGET_HOST in `awk -F, '{print $1}' $DEPLOY_TABLE`
+for TARGET_LINE in `awk -F, '{print $1,$2}' $DEPLOY_TABLE`
 do
+    TARGET_HOST=$(echo $TARGET_LINE | awk -F, '{print $1}')
+    TARGET_TYPE=$(echo $TARGET_LINE | awk -F, '{print $2}')
     #deploy
+    make generate_setting IN_TMPL=$TARGET_TYPE OUT_TMPL=$TARGET_HOST
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
     scp -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd
     #start server
