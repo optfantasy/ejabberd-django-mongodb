@@ -35,9 +35,12 @@ do
     TARGET_HOST=$(echo $TARGET_LINE | awk -F, '{print $1}')
     TARGET_TYPE=$(echo $TARGET_LINE | awk -F, '{print $2}')
     #deploy
-    make generate_setting IN_TMPL=$TARGET_TYPE OUT_TMPL=$TARGET_HOST
+    #make generate_setting IN_TMPL=$TARGET_TYPE OUT_TMPL=$TARGET_HOST
+    scripts/gen_${TARGET_TYPE}_setting.sh $TARGET_HOST
+
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
-    scp -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd
+    scp -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
+    ssh $USER@$TARGET_HOST "mv ejabberd ejabberd-old; mv ejabberd-new ejabberd && cp -r ejabberd-old/Mnesia* ejabberd"
     #start server
     #ssh $USER:$TARGET_HOST 'bash -s' < scripts/start_ejabberd.sh
     execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
