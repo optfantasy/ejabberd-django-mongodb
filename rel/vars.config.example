@@ -1,10 +1,10 @@
-{hosts, "[\"empty\" , \"empty-cluster\"]"}.
+{hosts, "[\"localhost\"]"}.
 {host_config, ""}.
 {odbc_server, ""}.
 {s2s_addr, "%% { {s2s_addr, \"example-host.net\"}, { {127,0,0,1}, 5269 } }."}.
 {s2s_default_policy, deny}.
 {outgoing_s2s_port, 5269}.
-{node_name, "ejabberd@empty"}.
+{node_name, "ejabberd@localhot"}.
 {ejabberd_c2s_port, 5222}.
 {ejabberd_webadmin_port, 5280}.
 {ejabberd_s2s_in_port, 5269}.
@@ -23,12 +23,11 @@
 {muc_host, "\"conference.@HOST@\""}.
 {pubsub_host, "\"pubsub.@HOST@\""}.
 {loglevel, 5}.
-{mongodb_djangouser_server, "[\"10.0.0.78:27017\"]"}.
-{mongodb_djangouser_db, "\"gulu\""}.
-{mongo_log_hosts, "[\"10.0.0.78:27017\"]"}.
+{mongodb_djangouser_server, "[\"localhost:27017\"]"}.
+{mongodb_djangouser_db, "\"thenewgulu\""}.
+{mongo_log_hosts, "[\"localhost:27017\"]"}.
 {mongo_log_db, "\"thenewgulu\""}.
 {mongo_log_collection, "\"xmppchat_message\""}.
-{mongo_log_api_url, "\"http://demo.gd:1337\""}.
-{websocket_host, "<<\"localhost\">>"}.
+{mongo_log_api_url, "\"http://localhost:1337\""}.
 {allowed_ips, "[ {127,0,0,1} ]"}.
 {http_rest_port, 5280}.
