@@ -43,8 +43,8 @@ do
     scripts/gen_${TARGET_TYPE}_setting.sh $TARGET_HOST
 
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
-    scp -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
-    ssh $USER@$TARGET_HOST "mv ejabberd ejabberd-old && cp -r ejabberd-old/Mnesia* ejabberd-new ; mv ejabberd-new ejabberd"
+    scp -q -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
+    ssh $USER@$TARGET_HOST "cp -r ejabberd/Mnesia* ejabberd-new ; rm -rf ejabberd-old;  mv ejabberd ejabberd-old ; mv ejabberd-new ejabberd"
     #start server
     #ssh $USER:$TARGET_HOST 'bash -s' < scripts/start_ejabberd.sh
     execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
