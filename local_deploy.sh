@@ -1,4 +1,7 @@
 #!/bin/bash
+shopt -s expand_aliases
+alias ssh="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+alias scp="scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
 USER=ejabberd
 DEPLOY_TABLE=deploy_table.csv
