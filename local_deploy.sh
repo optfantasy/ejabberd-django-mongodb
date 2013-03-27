@@ -10,6 +10,7 @@ PROXY_HOST=xmpp-dev-proxy-1
 PROXY_SETTING=~/nodes.csv
 PROXY_CMD=~/deploy_haproxy.sh
 TEMP_SCRIPT_NAME=ej_tmp_script.sh
+FIRST_NODE=`grep "master$" $DEPLOY_TABLE | awk -F, '{ print $1 }'`
 
 # function to execute scripts remotely.
 execute_script_remote() {
@@ -50,7 +51,13 @@ do
     ssh $USER@$TARGET_HOST "cp -r ejabberd/Mnesia* ejabberd-new ; rm -rf ejabberd-old;  mv ejabberd ejabberd-old ; mv ejabberd-new ejabberd"
     #start server
     #ssh $USER:$TARGET_HOST 'bash -s' < scripts/start_ejabberd.sh
+    if [ "$TARGET_TYPE" = "slave" ]; then
+    execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST $FIRST_NODE
+    else 
     execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
+    fi
+
+    
 done
 
 # Proxy setting
