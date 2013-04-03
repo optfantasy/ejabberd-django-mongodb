@@ -622,7 +622,6 @@ process_http_put(#http_put{rid = Rid, attrs = Attrs, payload = Payload,
 			   ip = IP} = Request,
 		 StateName, StateData, RidAllow) ->
     ?DEBUG("Actually processing request: ~p", [Request]),
-    ?DEBUG("~n~n--- RidAllow?? --- ~n~p~n --- END --- ~n~n", [RidAllow]),
     %% Check if key valid
     Key = xml:get_attr_s(<<"key">>, Attrs),
     NewKey = xml:get_attr_s(<<"newkey">>, Attrs),
@@ -655,7 +654,6 @@ process_http_put(#http_put{rid = Rid, attrs = Attrs, payload = Payload,
 		   true ->
 		       0
 	       end,
-    ?DEBUG("~n~n--- KeyAllow?? --- ~n~p~n --- END --- ~n~n", [KeyAllow]),
     if
 	(Payload == []) and
         (Hold == 0) and
