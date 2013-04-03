@@ -10,7 +10,9 @@
     save/2,
     save/3,
     update/3,
-    update/4
+    update/4,
+    remove/2,
+    remove/3
 ]).
 
 -export([init/1, start_link/2, handle_call/3, handle_cast/2, handle_info/2,
@@ -102,6 +104,11 @@ handle_call({update, Collection, Query, Rec}, _From, State=#state{conn=Conn}) ->
     ?INFO_MSG("===== handle_call update Result: ~p~n~n", [{Result}]),
     {reply, Result, State};
 
+handle_call({remove, Collection, Query}, _From, State=#state{conn=Conn}) ->
+    ?INFO_MSG("===== handle_call find: ~p~n~n", [{Collection, Query, State}]),
+    Result = Conn:remove(Collection, Query),
+    {reply, Result, State};
+
 handle_call(Request, _From, State) ->
     ?INFO_MSG("Unexpected call: ~p~n~n", [Request]),
     {reply, ok, State}.
@@ -148,8 +155,16 @@ update(Collection, Query, Rec) ->
     update(Host, Collection, Query, Rec).
 
 update(Host, Collection, Query, Rec) ->
-    ?INFO_MSG("===== update/3: ~p~n~n", [{Host, Collection, Query, Rec}]),
+    ?INFO_MSG("===== update/4: ~p~n~n", [{Host, Collection, Query, Rec}]),
     Proc = gen_mod:get_module_proc(Host, ?PROCNAME),
     gen_server:call(Proc, {update, Collection, Query, Rec}).
 
+remove(Collection, Query) ->
+    Host = get_host(),
+    remove(Host, Collection, Query).
+
+remove(Host, Collection, Query) ->
+    ?INFO_MSG("===== remove/3: ~p~n~n", [{Host, Collection, Query}]),
+    Proc = gen_mod:get_module_proc(Host, ?PROCNAME),
+    gen_server:call(Proc, {remove, Collection, Query}).
 

@@ -228,8 +228,8 @@ process_request(Data, IP) ->
 			    StreamStart, IP);
         {size_limit, Sid} ->
         % ?DEBUG("================= get_mongo_sid: ~p~n~n~n ========", [get_mongo_sid(Sid)]),
-	    case mnesia:dirty_read({http_bind, to_list(Sid)}) of
-        % case get_mongo_sid(Sid) of
+	    % case mnesia:dirty_read({http_bind, to_list(Sid)}) of
+        case get_mongo_sid(to_list(Sid)) of
 		[] ->
 		    {404, ?HEADER, ""};
 		[#http_bind{pid = FsmRef}] ->
@@ -296,16 +296,8 @@ handle_session_start(Pid, XmppDomain, Sid, Rid, Attrs,
                  version = Version
                 },
     ?DEBUG(" ------- HTTP_BIND: ~p -------------~n~n", [HTTP_BIND]),
-    % save_mongo_sid(#http_bind{id = Sid,
-    %              pid = Pid,
-    %              to = {XmppDomain,
-    %                    XmppVersion},
-    %              hold = Hold,
-    %              wait = Wait,
-    %              process_delay = Pdelay,
-    %              version = Version
-    %             }),
-    mnesia:dirty_write(HTTP_BIND),
+    save_mongo_sid(HTTP_BIND),
+    % mnesia:dirty_write(HTTP_BIND),
     handle_http_put(Sid, Rid, Attrs, Payload, PayloadSize, true, IP).
 
 %%%----------------------------------------------------------------------
@@ -566,6 +558,7 @@ handle_info(_, StateName, StateData) ->
 terminate(_Reason, _StateName, StateData) ->
     ?DEBUG("terminate: Deleting session ~s", [StateData#state.id]),
     mnesia:dirty_delete({http_bind, StateData#state.id}),
+    remove_mongo_sid(StateData#state.id),
     send_receiver_reply(StateData#state.http_receiver, {ok, terminate}),
     case StateData#state.waiting_input of
 	false ->
@@ -827,8 +820,8 @@ http_put(BSid, Rid, Attrs, Payload, PayloadSize, StreamStart, IP) ->
     Sid = to_list(BSid),
     ?DEBUG("Looking for session: ~p", [Sid]),
     % ?DEBUG("================= http_put get_mongo_sid: ~p~n~n~n ========", [get_mongo_sid(Sid)]),
-    case mnesia:dirty_read({http_bind, Sid}) of
-    % case get_mongo_sid(Sid) of
+    % case mnesia:dirty_read({http_bind, Sid}) of
+    case get_mongo_sid(Sid) of
 	[] ->
             {error, not_exists};
 	[#http_bind{pid = FsmRef, hold=Hold, to={To, StreamVersion}}=Sess] ->
@@ -1079,7 +1072,7 @@ send_outpacket(#http_bind{pid = FsmRef}, OutPacket) ->
 		    Body = "<body xmlns='"++to_list(?NS_HTTP_BIND)++"'>" 
 			++ TypedEls ++
 			"</body>",
-		    ?DEBUG(" --- outgoing data --- ~n~s~n --- END --- ~n",
+		    ?DEBUG(" --- outgoing data --- ~n~p~n --- END --- ~n",
 			   [Body]),
 		    {200, ?HEADER, Body};
 		false ->
@@ -1281,4 +1274,81 @@ to_list(A) ->
         true -> A;
         _ -> binary_to_list(A)
     end.
+
+write_mongo_cache(HTTP_BIND) ->
+    % #http_bind{
+    %     id = Sid,
+    %     pid = Pid,
+    %     to = {XmppDomain, XmppVersion},
+    %     hold = Hold,
+    %     wait = Wait,
+    %     process_delay = Pdelay,
+    %     version = Version
+    % } = HTTP_BIND
+    mnesia:dirty_write(HTTP_BIND).
+
+read_mongo_cache(Sid) ->
+    mnesia:dirty_read({http_bind, Sid}).
+
+get_mongo_sid(Sid) ->
+    case read_mongo_cache(to_list(Sid)) of
+        [] ->
+            Res = mod_mongodb:find("ej_http_bind", [{<<"sid">>, to_binary(Sid)}]),
+            case Res of
+                {ok, [Item|_List]} ->
+                    [
+                        {<<"_id">>, ObjectId},
+                        {<<"sid">>, NSid},
+                        {<<"pid">>, Pid},
+                        {<<"to">>, XmppDomain},
+                        {<<"ver">>, XmppVersion},
+                        {<<"hold">>, Hold},
+                        {<<"wait">>, Wait},
+                        {<<"process_delay">>, Pdelay},
+                        {<<"version">>, Version}
+                    ]=Item,
+                    HTTP_BIND = #http_bind{
+                        id = to_list(NSid),
+                        pid = list_to_pid(binary_to_list(Pid)),
+                        to = {XmppDomain, XmppVersion},
+                        hold = Hold,
+                        wait = Wait,
+                        process_delay = Pdelay,
+                        version = Version
+                    },
+                    write_mongo_cache(HTTP_BIND),
+                    [HTTP_BIND];
+                _ ->
+                    []
+            end;
+        [HTTP_BIND] ->
+            [HTTP_BIND]
+    end.
+
+
+save_mongo_sid(HTTP_BIND) ->
+    #http_bind{
+            id = Sid,
+            pid = Pid,
+            to = {XmppDomain, XmppVersion},
+            hold = Hold,
+            wait = Wait,
+            process_delay = Pdelay,
+            version = Version
+        } = HTTP_BIND,
+    % ?DEBUG("--- save_mongo_sid save_mongo_sid --- ~n~p~n --- END --- ", [Sid]),
+    mod_mongodb:save("ej_http_bind", [
+            {<<"sid">>, to_binary(Sid)},
+            {<<"pid">>, list_to_binary(pid_to_list(Pid))},
+            {<<"to">>, XmppDomain},
+            {<<"ver">>, XmppVersion},
+            {<<"hold">>, Hold},
+            {<<"wait">>, Wait},
+            {<<"process_delay">>, Pdelay},
+            {<<"version">>, Version}
+        ]).
+
+remove_mongo_sid(Sid) ->
+    mod_mongodb:remove("ej_http_bind", [{<<"sid">>, to_binary(Sid)}]).
+
 
