@@ -7,7 +7,8 @@
 	 %% Roster
 	 auto_friend/4,
      auto_friends/3,
-     unfriend/4
+     unfriend/4,
+	set_master/1
 	 % auto_friends/3,
 	 % delete_rosteritem/4
 	]).
@@ -48,6 +49,12 @@ commands() ->
    		args = [{localuser, string}, {localserver, string},
    			{users, string}],
    		result = {res, rescode}},
+     #ejabberd_commands{name = set_master, tags = [mnesia],
+			desc = "Set master node of the clustered Mnesia tables",
+			longdesc = "If you provie as nodename \"self\", this "
+			"node will be set as its own master.",
+			module = ?MODULE, function = set_master,
+			args = [{nodename, string}], result = {res, restuple}},
 	
      #ejabberd_commands{name = unfriend, tags = [roster],
 		desc = "Delete an item from a user's roster",
@@ -186,4 +193,19 @@ build_broadcast(U, S, SubsAtom) when is_atom(SubsAtom) ->
     {xmlelement, <<"broadcast">>, [],
      [{item, {U, S, ""}, SubsAtom}]
     }.
+
+set_master("self") ->
+    set_master(node());
+set_master(NodeString) when is_list(NodeString) ->
+    set_master(list_to_atom(NodeString));
+set_master(Node) when is_atom(Node) ->
+    case mnesia:set_master_nodes([Node]) of
+        ok ->
+	    {ok, ""};
+	{error, Reason} ->
+	    String = io_lib:format("Can't set master node ~p at node ~p:~n~p",
+				   [Node, node(), Reason]),
+	    {error, String}
+    end.
+
 

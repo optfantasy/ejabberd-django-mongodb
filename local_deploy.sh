@@ -60,6 +60,8 @@ do
     
 done
 
+git add ./deploy_table.csv && git commit -m 'Update deploy_table.csv' > /dev/null
+
 # Proxy setting
 scp $DEPLOY_TABLE $PROXY_USER@$PROXY_HOST:$PROXY_SETTING
 
