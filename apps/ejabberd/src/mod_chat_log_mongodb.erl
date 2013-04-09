@@ -40,7 +40,6 @@
 %% gen_mod callbacks
 
 start(Host, Opts) ->
-    % ?INFO_MSG("~p starting...==================================", [?MODULE]),
     HostB = Host,
 	ejabberd_hooks:add(user_send_packet, HostB, ?MODULE, log_user_send, 55),
 	Proc = gen_mod:get_module_proc(Host, ?PROCNAME),
@@ -110,7 +109,7 @@ handle_call(Request, _From, State) ->
 	{reply, ok, State}.
 
 handle_cast({apns, MSG_UUID, BODY, FromJid, ToJid}, S=#state{conn=Conn, collection=_Coll, api_url=API_URL}) ->
-    ?INFO_MSG("push Message: ~p ~p~n~n", [MSG_UUID, BODY]),
+    % ?INFO_MSG("push Message: ~p ~p~n~n", [MSG_UUID, BODY]),
     % {ok, Groups} = Conn:find("group_group", [{"_id", {oid, ToJid}}], undefined, 0, 1),
     % case Groups of
     %     [] ->
@@ -125,7 +124,7 @@ handle_cast({apns, MSG_UUID, BODY, FromJid, ToJid}, S=#state{conn=Conn, collecti
     {noreply, S};
 
 handle_cast({save, Rec}, S=#state{conn=Conn, collection=Coll}) ->
-    ?INFO_MSG("========================================Save Message: ~p~n~n", [Rec]),
+    % ?INFO_MSG("========================================Save Message: ~p~n~n", [Rec]),
     Conn:save(Coll, Rec),
     {noreply, S};
 
@@ -168,31 +167,22 @@ handle_info(update_message_timestamp, State=#state{api_url=API_URL}) ->
             ok;
         _ ->
             GT = [ [{<<"group_id">>,G},{<<"ts">>,T}] || {G,T} <- GroupTime],
-            % io:format('kkkkkkkkk ~p ~p ~n',[GroupTime, GT]),
             Count = lists:flatlength(GT),
             Div = Count div ?POSTCOUNT,
-            % io:format('========= ~p ~p ~n', [Count,Div]),
             case Count rem ?POSTCOUNT of
                 Rem when Rem > 0 ->
                     Div2 = Div + 1;
                 _ ->
                     Div2 = Div
             end,
-            % io:format('====================== ~p ~n', [Div2]),
             Fun = fun(Num) ->
 
-                % io:format('----------------1 ~p ~p ~p ~n', [Num, (Num-1)*?POSTCOUNT+1, ?POSTCOUNT]),
                 NewGT = lists:sublist(GT, (Num-1)*?POSTCOUNT+1, ?POSTCOUNT),
-                % io:format('----------------2 ~p ~n', [NewGT]),
                 NewGT2 = parse_list_for_jiffy(NewGT, []),
-                % io:format('----------------2222 ~p ~n', [NewGT2]),
                 GTString = binary_to_list(jiffy:encode(NewGT2)),
-                % io:format('----------------3 ~p ~n', [GTString]),
                 EncodeGT = encode(string:join(["{\"content\":",GTString,"}"],"")),
-                % io:format('----------------4 ~p ~n', [EncodeGT]),
                 Data = string:join(["post_key=2vsAATy79N&json=", EncodeGT], ""),
                 URL = string:join([API_URL, "/api/chat/update_group_ts/"], ""),
-                % io:format('ffffffff ~p ~p ~p ~n', [API_URL,URL,Data]),
                 httpc:request(post,
                     {URL,
                         [],
@@ -217,8 +207,6 @@ log_user_send(From, To, Packet) ->
 %% private
 
 log_packet(From, To, Packet = {xmlelement, <<"message">>, Attrs, _Els}) ->
-    % Type = exmpp_xml:get_attribute_from_list(Attrs, <<"type">>, <<>>),
-    % ?INFO_MSG("=========== log_packet ok: ~p ~p~n~n",[Packet, Attrs]),
     Type = xml:get_attr_s(<<"type">>, Attrs), 
 	case Type of
 		"error" -> %% we don't log errors
@@ -231,22 +219,24 @@ log_packet(_From, _To, _Packet) ->
     ok.
 
 save_packet(From, To, Packet, Type, Attrs) ->
-	% Body = exmpp_xml:get_cdata(exmpp_xml:get_element(Packet, "body")),
-	% MsgUUID = exmpp_xml:get_attribute_as_binary(Packet, <<"msguuid">>, ""),
-        % CombineUUID = exmpp_xml:get_attribute_as_binary(Packet, <<"combine">>, ""),
 
 	Body = xml:get_path_s(Packet, [{elem, <<"body">>}, cdata]),
-	MsgUUID = case UUID = xml:get_attr_s(<<"msguuid">>, Attrs) of
+
+	% MsgUUID = case UUID = xml:get_attr_s(<<"msguuid">>, Attrs) of
+    MsgUUID = case UUID = xml:get_path_s(Packet, [{elem, <<"info">>}, {attr, <<"msguuid">>}]) of
                 <<>> -> list_to_binary(uuid:to_string(uuid:uuid4()));
                 _ -> UUID
             end,
-    CombineUUID = xml:get_attr_s(<<"combine">>, Attrs),
-    % ?INFO_MSG("======= ~p ~p ~p~n~n", [Body, MsgUUID, CombineUUID]),
+    TAGS = case Tags = xml:get_path_s(Packet, [{elem, <<"info">>}, {attr, <<"tags">>}]) of
+                <<>> -> [];
+                _ -> string:tokens(binary_to_list(Tags), ",")
+            end,
+    % CombineUUID = xml:get_attr_s(<<"combine">>, Attrs),
+    CombineUUID = xml:get_path_s(Packet, [{elem, <<"info">>}, {attr, <<"combine">>}]),
 
-    %%CombineBody = exmpp_xml:get_attribute_as_binary(Packet, <<"combine_body">>, ""),
 	case Body of
 		<<"">> -> %% don't log empty messages
-			?DEBUG("not logging empty message from ~p~n~n",[From]),
+			?DEBUG("Should not logging empty message from ~p~n~n",[From]),
 			ok;
 		_ ->
 
@@ -276,38 +266,32 @@ save_packet(From, To, Packet, Type, Attrs) ->
                 {<<"msg_type">>, Type},
                 {<<"msg_uuid">>, MsgUUID},
                 {<<"in_timeline">>, false},
-                {<<"_doing_timeline">>, false}
+                {<<"_doing_timeline">>, false},
+                {<<"tags">>, {array, TAGS}}
             ],
 
 
-            case is_pubsub(prepare_list(ToJid)) of
-                false ->
-
-                    case Type of
-                        <<"groupchat">> ->
-                            ets:insert(gulu_group_timestamp, {prepare(ToJid), Timestamp}),
-                            ?INFO_MSG("ready to send... ~p~n~n", [Rec]),
-                            Proc = gen_mod:get_module_proc(FromHost, ?PROCNAME),
-                            ?INFO_MSG("ready to send...proc ~p~n~n", [Proc]),
-                            case CombineUUID of
-                                <<"">> ->
-                                    gen_server:cast(Proc, {save, Rec}),
-                                    gen_server:cast(Proc, {apns, binary_to_list(MsgUUID), unicode:characters_to_list(Body), FromJid, ToJid}),
-                                    ?INFO_MSG("======ready to sended ~p~n~n", [Proc]);
-                                _ ->
-                                    % CombineBody = exmpp_xml:get_cdata(exmpp_xml:get_element(Packet, "combinebody")),
-                                    CombineBody = xml:get_path_s(Packet, [{elem, <<"combinebody">>}, cdata]),
-
-                                    gen_server:cast(Proc, {update, Rec, CombineUUID, CombineBody, Timestamp, MicroTime}),
-                                    gen_server:cast(Proc, {apns, binary_to_list(CombineUUID), unicode:characters_to_list(Body), FromJid, ToJid}),
-                                    ?INFO_MSG("======ready to update ~p ~p ~p~n~n", [Proc, CombineUUID, CombineBody])
-                            end;
+            case Type of
+                <<"groupchat">> ->
+                    ets:insert(gulu_group_timestamp, {prepare(ToJid), Timestamp}),
+                    % ?INFO_MSG("ready to send... ~p~n~n", [Rec]),
+                    Proc = gen_mod:get_module_proc(FromHost, ?PROCNAME),
+                    % ?INFO_MSG("ready to send...proc ~p~n~n", [Proc]),
+                    case CombineUUID of
+                        <<"">> ->
+                            gen_server:cast(Proc, {save, Rec}),
+                            gen_server:cast(Proc, {apns, binary_to_list(MsgUUID), unicode:characters_to_list(Body), FromJid, ToJid});
+                            % ?INFO_MSG("======ready to sended ~p~n~n", [Proc]);
                         _ ->
-                            ?DEBUG("only logging groupchat: typr = ~p",[Type]),
-                            ok
-                    end;
+                            % CombineBody = exmpp_xml:get_cdata(exmpp_xml:get_element(Packet, "combinebody")),
+                            CombineBody = xml:get_path_s(Packet, [{elem, <<"combinebody">>}, cdata]),
 
-                true ->
+                            gen_server:cast(Proc, {update, Rec, CombineUUID, CombineBody, Timestamp, MicroTime}),
+                            gen_server:cast(Proc, {apns, binary_to_list(CombineUUID), unicode:characters_to_list(Body), FromJid, ToJid})
+                            % ?INFO_MSG("======ready to update ~p ~p ~p~n~n", [Proc, CombineUUID, CombineBody])
+                    end;
+                _ ->
+                    ?DEBUG("We only logging groupchat: type = ~p",[Type]),
                     ok
             end
 	end.
@@ -327,12 +311,6 @@ apns_by_django(MSG_UUID, BODY, FromJid, API_URL) ->
             "application/x-www-form-urlencoded",
             Data
         }, [], []).
-
-is_pubsub(Val) ->
-    case re:run(Val, "-pubsub$", []) of
-        {match, _} -> true;
-        _ -> false
-    end.
 
 flush() ->
     flush(now_us(erlang:now()), [], ets:next(?MODULE, 0)).
