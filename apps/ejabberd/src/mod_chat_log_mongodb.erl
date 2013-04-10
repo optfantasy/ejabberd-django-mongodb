@@ -267,7 +267,7 @@ save_packet(From, To, Packet, Type, Attrs) ->
                 {<<"msg_uuid">>, MsgUUID},
                 {<<"in_timeline">>, false},
                 {<<"_doing_timeline">>, false},
-                {<<"tags">>, {array, TAGS}}
+                {<<"tags">>, {array, array_list_to_binary(TAGS)}}
             ],
 
 
@@ -322,6 +322,16 @@ flush(MaxKey, Acc, CurrKey) when CurrKey < MaxKey ->
     flush(MaxKey, [Res|Acc], ets:next(?MODULE, CurrKey));
 flush(MaxKey, Acc, CurrKey) when CurrKey >= MaxKey ->
     Acc.
+
+array_list_to_binary(Arr) ->
+    case Arr of
+        [] ->
+            Arr;
+        [A|B] when is_list(A) ->
+            [list_to_binary(A)] ++ array_list_to_binary(B);
+        [C|D] ->
+            [C] ++ array_list_to_binary(D)
+    end.
 
 unix_timestamp() ->
     unix_timestamp(calendar:universal_time()).
