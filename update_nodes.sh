@@ -23,44 +23,60 @@ execute_script_remote() {
     ssh $REMOTE_USER@$REMOTE_HOST "chmod 755 /tmp/$TEMP_SCRIPT_NAME ; /tmp/$TEMP_SCRIPT_NAME $ARGUMENTS; chmod 644 /tmp/$TEMP_SCRIPT_NAME"
 }
 
-make productionclean
+# function to deploy a new node
+# usage: add_node <node_host> <node_type>
+add_node () {
+    TARGET_HOST=$1
+    TARGET_TYPE=$2
 
-# Stop all server nodes
-for TARGET_HOST in `awk -F, '{print $1}' $DEPLOY_TABLE`
-do
-    #stop server
-    #ssh $USER:$TARGET_HOST 'bash -s' < scripts/stop_ejabberd.sh
-    execute_script_remote scripts/stop_ejabberd.sh $USER $TARGET_HOST
-done
-
-# deploy and start nodes
-for TARGET_LINE in `cat $DEPLOY_TABLE`
-do
-    export TARGET_LINE
-    TARGET_HOST=`echo $TARGET_LINE | awk -F, '{print $1}'`
-    TARGET_TYPE=`echo $TARGET_LINE | awk -F, '{print $2}'`
-
-    echo "TARGET_HOST: $TARGET_HOST"
-    echo "TARGET_TYPE: $TARGET_TYPE"
-    #deploy
-    #make generate_setting IN_TMPL=$TARGET_TYPE OUT_TMPL=$TARGET_HOST
-    scripts/gen_${TARGET_TYPE}_setting.sh $TARGET_HOST
+    scripts/gen_${TARGET_TYPE}_setting.sh ${TARGET_HOST}
 
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
     scp -q -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
     ssh $USER@$TARGET_HOST "cp -r ejabberd/Mnesia* ejabberd-new ; rm -rf ejabberd-old;  mv ejabberd ejabberd-old ; mv ejabberd-new ejabberd"
-    #start server
-    #ssh $USER:$TARGET_HOST 'bash -s' < scripts/start_ejabberd.sh
     if [ "$TARGET_TYPE" = "slave" ]; then
     execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST $FIRST_NODE
     else 
     execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
     fi
+}
 
-    
+# function to stop a node
+# usage: remove_node <node_host>
+remove_node() {
+	TARGET_HOST=$1
+	execute_script_remote scripts/stop_ejabberd.sh $USER $TARGET_HOST
+}
+
+
+make productionclean
+
+diff_result=`./diff_deploy_table.sh`
+#diff_result=`cat testdiff` # for testing
+
+nodes_add=`echo "$diff_result" | grep "^+" --color=never | awk '{ print $2; }'`
+nodes_remove=`echo "$diff_result" | grep "^-" --color=never | awk '{ print $2; }'`
+
+echo $nodes_add
+echo $nodes_remove
+
+# starting new nodes...
+for TARGET_LINE in $nodes_add  
+do
+    NODE_HOST=`echo $TARGET_LINE | awk -F"," '{ print $1 }'`
+    NODE_TYPE=`echo $TARGET_LINE | awk -F"," '{ print $2 }'`
+    echo "add_node $NODE_HOST $NODE_TYPE"
+    add_node $NODE_HOST $NODE_TYPE
 done
 
-git add ./deploy_table.csv && git commit -m 'Update deploy_table.csv' > /dev/null
+# stopping deprecated nodes...
+for TARGET_LINE in $nodes_remove
+do
+    NODE_HOST=`echo $TARGET_LINE | awk -F"," '{ print $1 }'`
+    echo "remove_node $NODE_HOST $NODE_TYPE"
+    remove_node $NODE_HOST $NODE_TYPE
+done
+
 
 # Proxy setting
 scp $DEPLOY_TABLE $PROXY_USER@$PROXY_HOST:$PROXY_SETTING
