@@ -65,12 +65,7 @@ plain_password_required() ->
 check_password(User, Server, Password) ->
     % ?INFO_MSG("~nUser: ~p~nServer: ~p~nPassword: ~p~n", [User, Server, Password]),
     Data_userprofile_password = get_password(User, Server),
-    UsernamePrefix = binary:part(User, {0, 7}),
-    if UsernamePrefix == <<"ws_test">> ->
-      true;
-    true ->
-    mongo_check_password(User, Password, Server)
-end.
+    mongo_check_password(User, Password, Server).
 
 check_password(User, Server, Password, Digest, DigestGen) ->
     Data_userprofile_password = get_password(User, Server),
@@ -88,10 +83,6 @@ check_password(User, Server, Password, Digest, DigestGen) ->
          end,
     if DigRes ->
         true;
-% for testing purpose
-       UsernamePrefix == <<"ws_test">> ->
-	     ?INFO_MSG("FUCK in check_password~n", []),
-        true;
        true ->
         (Data_userprofile_password == Password) and (Password /= <<>>)
     end.
@@ -101,13 +92,7 @@ check_password(User, Server, Password, Digest, DigestGen) ->
 
 
 is_user_exists(User, Server) ->
-    UsernamePrefix = binary:part(User, {0, 7}),
-    if UsernamePrefix == <<"ws_test">> ->
-	     ?INFO_MSG("FUCK in is_user_exists~n", []),
-      true;
-    true ->
-      mongo_user_exists(User, Server)
-end.
+    mongo_user_exists(User, Server).
 
 set_password(_User, _Server, _Password) ->
     {error, not_allowed}.
@@ -116,20 +101,13 @@ try_register(_,_,_) ->
     {error, not_allowed}.
 
 dirty_get_registered_users() ->
-    ?INFO_MSG("fuck**************************************~n", []),
     [].
 
 get_vh_registered_users(_) -> 
-    ?INFO_MSG("fuck yeah --------------------------------~n", []),
     [].
 
 get_password(User, Server) ->
-    UsernamePrefix = binary:part(User, {0, 7}),
-    if UsernamePrefix == <<"ws_test">> ->
-	<<"abc">>;
-    true ->
-        get_password_s(User, Server) 
-end.
+    get_password_s(User, Server) 
 
 get_password_s(User, Server) ->
     DB_dbname = list_to_binary(ejabberd_config:get_local_option({mongodb_djangouser_db, Server})),
