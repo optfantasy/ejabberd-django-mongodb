@@ -29,6 +29,8 @@
     conn
 }).
 
+-record(rem_host, {id, host}).
+
 %% gen_mod callbacks
 
 start(Host, Opts) ->
@@ -57,15 +59,9 @@ start_link(Host, Opts) ->
     gen_server:start_link({local, Proc}, ?MODULE, [Host, Opts], []).
 
 init([Host, Opts]) ->
-    inets:start(),
-    case catch ets:new(rem_host, [set, named_table]) of
-        rem_host -> ok;
-        _ ->
-            catch ets:delete(rem_host),
-            catch ets:new(rem_host, [set, named_table])
-    end,
     ?INFO_MSG("*** INIT MONGODB ", []),
-    ets:insert(rem_host, {mod_mongo_host, Host}),
+    setup_database(),
+    mnesia:dirty_write(#rem_host{id="hostid",host=Host}),
     MHost = gen_mod:get_opt(hosts, Opts, ["localhost:27017"]),
     DB = gen_mod:get_opt(db, Opts, "xmpp"),
     mongodb:replicaSets(ej_mongo, MHost),
@@ -79,6 +75,20 @@ init([Host, Opts]) ->
         db = DB,
         conn = Conn
     }}.
+
+setup_database() ->
+    migrate_database(),
+    mnesia:create_table(rem_host,
+            [{ram_copies, [node()]},
+             {attributes, record_info(fields, rem_host)}]).
+
+migrate_database() ->
+    case catch mnesia:table_info(rem_host, attributes) of
+        [id, host] ->
+        ok;
+        _ ->
+        mnesia:delete_table(rem_host)
+    end.
 
 terminate(_Reason, _State) ->
     mongodb:deleteConnection(ej_mongo),
@@ -122,10 +132,8 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 get_host() ->
-    case catch ets:lookup(rem_host, mod_mongo_host) of
-        [] ->
-            <<"localhost">>;
-        [{mod_mongo_host, Host}] ->
+    case catch mnesia:dirty_read(rem_host, "hostid") of
+        [#rem_host{host=Host}] ->
             Host;
         _ ->
             <<"localhost">>
