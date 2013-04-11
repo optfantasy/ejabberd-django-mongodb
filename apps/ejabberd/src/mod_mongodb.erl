@@ -62,7 +62,7 @@ init([Host, Opts]) ->
         rem_host -> ok;
         _ ->
             catch ets:delete(rem_host),
-            ets:new(rem_host, [set, named_table])
+            catch ets:new(rem_host, [set, named_table])
     end,
     ?INFO_MSG("*** INIT MONGODB ", []),
     ets:insert(rem_host, {mod_mongo_host, Host}),
