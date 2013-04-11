@@ -39,6 +39,8 @@
          set_presence/7,
          unset_presence/6,
          close_session_unset_presence/5,
+         dirty_get_sessions_list/0,
+         dirty_get_my_sessions_list/0,
          get_unique_sessions_number/0,
          get_total_sessions_number/0,
          get_node_sessions_number/0,
@@ -53,6 +55,8 @@
          get_session_pid/3,
          get_user_info/3,
          get_user_ip/3,
+         connected_users/0,
+         connected_users_number/0,
          pubsub_message/5
         ]).
 
@@ -189,6 +193,22 @@ get_session_pid(User, Server, Resource) ->
         _ ->
             none
     end.
+
+-spec dirty_get_sessions_list() -> [ljid()].
+
+dirty_get_sessions_list() ->
+    mnesia:dirty_select(
+      session,
+      [{#session{usr = '$1', _ = '_'},
+    [],
+    ['$1']}]).
+
+dirty_get_my_sessions_list() ->
+    mnesia:dirty_select(
+      session,
+      [{#session{sid = {'_', '$1'}, _ = '_'},
+    [{'==', {node, '$1'}, node()}],
+    ['$_']}]).
 
 -spec get_unique_sessions_number() -> integer().
 get_unique_sessions_number() ->
@@ -655,6 +675,16 @@ commands() ->
         args = [{localuser, string}, {localserver, string},
             {key, string}, {users, string}, {message, string}],
         result = {res, rescode}},
+    #ejabberd_commands{name = connected_users,
+            tags = [session],
+            desc = "List all established sessions",
+            module = ?MODULE, function = connected_users, args = [],
+            result = {connected_users, {list, {sessions, string}}}},
+     #ejabberd_commands{name = connected_users_number,
+            tags = [session, stats],
+            desc = "Get the number of established sessions",
+            module = ?MODULE, function = connected_users_number,
+            args = [], result = {num_sessions, integer}},
      #ejabberd_commands{name = user_resources,
                         tags = [session],
                         desc = "List user's connected resources",
@@ -663,10 +693,20 @@ commands() ->
                         result = {resources, {list, {resource, binary}}}}
 	].
 
+-spec connected_users() -> [binary()].
+
+connected_users() ->
+    USRs = dirty_get_sessions_list(),
+    SUSRs = lists:sort(USRs),
+    lists:map(fun ({U, S, R}) -> <<U/binary, $@, S/binary, $/, R/binary>> end,
+          SUSRs).
+
+connected_users_number() ->
+    length(dirty_get_sessions_list()).
+
 user_resources(User, Server) ->
     Resources =  get_user_resources(list_to_binary(User), list_to_binary(Server)),
     lists:sort(Resources).
-
 
 pubsub_message(LocalUser, LocalServer, Key, Users, Message) ->
     USERS = re:split(Users, ",", [{return, list}]),
