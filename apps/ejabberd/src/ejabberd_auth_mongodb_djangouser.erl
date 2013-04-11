@@ -60,7 +60,7 @@ start(Host) ->
 %%%
 
 plain_password_required() -> 
-    true.
+    false.
 
 check_password(User, Server, Password) ->
     % ?INFO_MSG("~nUser: ~p~nServer: ~p~nPassword: ~p~n", [User, Server, Password]),
@@ -107,7 +107,7 @@ get_vh_registered_users(_) ->
     [].
 
 get_password(User, Server) ->
-    get_password_s(User, Server) 
+    get_password_s(User, Server).
 
 get_password_s(User, Server) ->
     DB_dbname = list_to_binary(ejabberd_config:get_local_option({mongodb_djangouser_db, Server})),
