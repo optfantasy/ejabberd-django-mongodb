@@ -11,7 +11,7 @@ fi
 USER=ejabberd
 DEPLOY_VER=$1
 DEPLOY_TABLE=./deploytables/deploy_table-${DEPLOY_VER}.csv
-DEPLOY_PROXY_TABLE=./deploytables/deploy_proxy-${DEPLOY_VER}.csv
+DEPLOY_PROXY_TABLE=./deploytables/proxy_table-${DEPLOY_VER}.csv
 PROXY_HOST=`cat ${DEPLOY_PROXY_TABLE} | head -1`
 PROXY_USER=ejabberd
 PROXY_SETTING=~/nodes.csv
