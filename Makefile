@@ -127,13 +127,14 @@ rebar:
 
 # The following stuffs are for generating settings from our master or slave templates.
 # Usage:
-# 	make generate_settings <type> <node_name>
+# 	make generate_settings IN_TMPL=<type> OUT_TMPL=<node_name> DEPLOY_VER=<deploy_version>
 # 	<type> :: "master" | "slave"
 # 	<node_name> :: <string>
+DEPLOY_VER=dev
 TMPL_DIR = ./rel/reltool_vars/templates
 IN_TMPL  = master # must be either "master" or "slave".
 OUT_TMPL = production1 # the node name
-IN_TMPL_PATH  = $(TMPL_DIR)/template_$(IN_TMPL)_vars.config
+IN_TMPL_PATH  = $(TMPL_DIR)/template_$(IN_TMPL)_vars-$(DEPLOY_VER).config
 OUT_TMPL_PATH = $(TMPL_DIR)/../$(OUT_TMPL)_vars.config
 
 generate_setting:

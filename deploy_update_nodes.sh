@@ -4,7 +4,8 @@ alias ssh="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 alias scp="scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
 USER=ejabberd
-DEPLOY_TABLE=deploy_table.csv
+DEPLOY_VER=dev
+DEPLOY_TABLE=./deploytables/deploy_table-${DEPLOY_VER}.csv
 PROXY_USER=ejabberd
 PROXY_HOST=xmpp-dev-proxy-1
 PROXY_SETTING=~/nodes.csv
@@ -51,7 +52,7 @@ remove_node() {
 
 make productionclean
 
-diff_result=`./diff_deploy_table.sh`
+diff_result=`./diff_deploy_table.sh ${DEPLOY_VER}`
 #diff_result=`cat testdiff` # for testing
 
 nodes_add=`echo "$diff_result" | grep "^+" --color=never | awk '{ print $2; }'`

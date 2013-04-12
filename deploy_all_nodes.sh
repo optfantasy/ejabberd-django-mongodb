@@ -3,10 +3,17 @@ shopt -s expand_aliases
 alias ssh="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 alias scp="scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
+if [ -z $1 ]; then
+    echo "Usage: $0 <deploy_version>" 1>&2
+    exit 1
+fi
+
 USER=ejabberd
-DEPLOY_TABLE=deploy_table.csv
+DEPLOY_VER=$1
+DEPLOY_TABLE=./deploytables/deploy_table-${DEPLOY_VER}.csv
+DEPLOY_PROXY_TABLE=./deploytables/deploy_proxy-${DEPLOY_VER}.csv
+PROXY_HOST=`cat ${DEPLOY_PROXY_TABLE} | head -1`
 PROXY_USER=ejabberd
-PROXY_HOST=xmpp-dev-proxy-1
 PROXY_SETTING=~/nodes.csv
 PROXY_CMD=~/deploy_haproxy.sh
 TEMP_SCRIPT_NAME=ej_tmp_script.sh
@@ -44,7 +51,7 @@ do
     echo "TARGET_TYPE: $TARGET_TYPE"
     #deploy
     #make generate_setting IN_TMPL=$TARGET_TYPE OUT_TMPL=$TARGET_HOST
-    scripts/gen_${TARGET_TYPE}_setting.sh $TARGET_HOST
+    scripts/gen_${TARGET_TYPE}_setting.sh $TARGET_HOST $DEPLOY_VER
 
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
     scp -q -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
@@ -60,7 +67,7 @@ do
     
 done
 
-git add ./deploy_table.csv && git commit -m 'Update deploy_table.csv' > /dev/null
+git add $DEPLOY_TABLE && git commit -m "updated ${DEPLOY_TABLE}" > /dev/null
 
 # Proxy setting
 scp $DEPLOY_TABLE $PROXY_USER@$PROXY_HOST:$PROXY_SETTING
