@@ -1,1 +1,1 @@
-deploy_all_nodes.sh dev
+./deploy_all_nodes.sh dev
