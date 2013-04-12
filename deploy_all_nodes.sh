@@ -32,6 +32,9 @@ execute_script_remote() {
 
 make productionclean
 
+# templating var.config
+./scripts/gen_global_setting.sh ${DEPLOY_VER}
+
 # Stop all server nodes
 for TARGET_HOST in `awk -F, '{print $1}' $DEPLOY_TABLE`
 do

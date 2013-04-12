@@ -52,6 +52,10 @@ remove_node() {
 
 make productionclean
 
+# templating var.config
+./scripts/gen_global_setting.sh ${DEPLOY_VER}
+
+
 diff_result=`./diff_deploy_table.sh ${DEPLOY_VER}`
 #diff_result=`cat testdiff` # for testing
 
