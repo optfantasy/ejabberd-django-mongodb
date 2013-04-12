@@ -3,9 +3,15 @@ shopt -s expand_aliases
 alias ssh="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 alias scp="scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
+if [ -z $1 ]; then
+    echo "Usage: $0 <deploy_version>"
+    exit 1
+fi
+
 USER=ejabberd
-DEPLOY_VER=dev
+DEPLOY_VER=$1
 DEPLOY_TABLE=./deploytables/deploy_table-${DEPLOY_VER}.csv
+DEPLOY_PROXY_TABLE=./deploytables/proxy_table-${DEPLOY_VER}.csv
 PROXY_USER=ejabberd
 PROXY_HOST=`cat ${DEPLOY_PROXY_TABLE} | head -1`
 PROXY_SETTING=~/nodes.csv
