@@ -88,6 +88,21 @@ do
     remove_node $NODE_HOST $NODE_TYPE
 done
 
+# wait ej start
+
+sleep 10
+
+# do db_sync
+for TARGET_LINE in $nodes_add  
+do
+    NODE_HOST=`echo $TARGET_LINE | awk -F"," '{ print $1 }'`
+    NODE_TYPE=`echo $TARGET_LINE | awk -F"," '{ print $2 }'`
+    echo "Do mnesia sync @ '$NODE_HOST'"
+
+    if [ "$NODE_TYPE" = "slave" ]; then
+    execute_script_remote scripts/db_sync.sh $USER $NODE_HOST ejabberd@$FIRST_NODE
+    fi
+done
 
 # Proxy setting
 scp $DEPLOY_TABLE $PROXY_USER@$PROXY_HOST:$PROXY_SETTING

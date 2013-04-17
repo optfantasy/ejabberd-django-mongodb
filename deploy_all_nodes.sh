@@ -43,6 +43,8 @@ do
     execute_script_remote scripts/stop_ejabberd.sh $USER $TARGET_HOST
 done
 
+TARGETS=""
+
 # deploy and start nodes
 for TARGET_LINE in `cat $DEPLOY_TABLE`
 do
@@ -57,6 +59,18 @@ do
     scripts/gen_${TARGET_TYPE}_setting.sh $TARGET_HOST $DEPLOY_VER
 
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
+    
+    TARGETS="$TARGETS $TARGET_HOST"
+done
+
+echo "Generate rel files for $TARGETS"
+#make productionrel PRODUCTION_NODES="$TARGETS"
+
+for TARGET_LINE in `cat $DEPLOY_TABLE`
+do
+    TARGET_HOST=`echo $TARGET_LINE | awk -F, '{print $1}'`
+    TARGET_TYPE=`echo $TARGET_LINE | awk -F, '{print $2}'`
+
     scp -q -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
     ssh $USER@$TARGET_HOST "cp -r ejabberd/Mnesia* ejabberd-new ; rm -rf ejabberd-old;  mv ejabberd ejabberd-old ; mv ejabberd-new ejabberd"
     #start server
@@ -66,8 +80,21 @@ do
     else 
     execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
     fi
+done
 
-    
+# Wait it start.
+sleep 10
+
+# After deploying, do db_sync for all slave node.
+for TARGET_LINE in `cat $DEPLOY_TABLE`
+do
+    TARGET_HOST=`echo $TARGET_LINE | awk -F, '{print $1}'`
+    TARGET_TYPE=`echo $TARGET_LINE | awk -F, '{print $2}'`
+
+    if [ "$TARGET_TYPE" = "slave" ]; then
+    echo "Do mnesia sync @ '$TARGET_HOST'"
+    execute_script_remote scripts/db_sync.sh $USER $TARGET_HOST ejabberd@$FIRST_NODE
+    fi
 done
 
 git add $DEPLOY_TABLE && git commit -m "updated ${DEPLOY_TABLE}" > /dev/null
@@ -77,3 +104,5 @@ scp $DEPLOY_TABLE $PROXY_USER@$PROXY_HOST:$PROXY_SETTING
 
 # Run HAProxy
 ssh $PROXY_USER@$PROXY_HOST "bash $PROXY_CMD"
+
+
