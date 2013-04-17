@@ -99,25 +99,51 @@ code_change(_OldVsn, State, _Extra) ->
 
 handle_call({find, Collection, Query}, _From, State=#state{conn=Conn}) ->
     ?INFO_MSG("===== handle_call find: ~p~n~n", [{Collection, Query, State}]),
-    Result = Conn:find(Collection, Query, undefined, 0, 1),
-    {reply, Result, State};
+    case catch Conn:find(Collection, Query, undefined, 0, 1) of
+        Result = {ok, _Data} ->
+            {reply, Result, State};
+        Error ->
+            ?INFO_MSG("error happened, ~p ~n~n", [Error]),
+            {reply, {error, []}, State}
+    end;
 
 handle_call({save, Collection, Rec}, _From, State=#state{conn=Conn}) ->
     ?INFO_MSG("===== handle_call save: ~p~n~n", [{Collection, Rec, State}]),
-    ResultId = Conn:save(Collection, Rec),
-    ?INFO_MSG("===== handle_call save Result: ~p~n~n", [{ResultId}]),
-    {reply, ResultId, State};
+    case catch Conn:save(Collection, Rec) of
+        ResultId = {oid, _Data} ->
+            {reply, ResultId, State};
+        Error ->
+            ?INFO_MSG("error happened, ~p ~n~n", [Error]),
+            {reply, {error, []}, State}
+    end;
+    % ResultId = Conn:save(Collection, Rec),
+    % ?INFO_MSG("===== handle_call save Result: ~p~n~n", [{ResultId}]),
+    % {reply, ResultId, State};
 
 handle_call({update, Collection, Query, Rec}, _From, State=#state{conn=Conn}) ->
     ?INFO_MSG("===== handle_call update: ~p~n~n", [{Collection, Query, Rec, State}]),
-    Result = Conn:update(Collection, Query, Rec, []),
-    ?INFO_MSG("===== handle_call update Result: ~p~n~n", [{Result}]),
-    {reply, Result, State};
+    case catch Conn:update(Collection, Query, Rec, []) of
+        Result = ok ->
+            {reply, Result, State};
+        Error ->
+            ?INFO_MSG("error happened, ~p ~n~n", [Error]),
+            {reply, {error, []}, State}
+    end;
+    % Result = Conn:update(Collection, Query, Rec, []),
+    % ?INFO_MSG("===== handle_call update Result: ~p~n~n", [{Result}]),
+    % {reply, Result, State};
 
 handle_call({remove, Collection, Query}, _From, State=#state{conn=Conn}) ->
     ?INFO_MSG("===== handle_call find: ~p~n~n", [{Collection, Query, State}]),
-    Result = Conn:remove(Collection, Query),
-    {reply, Result, State};
+    case catch Conn:remove(Collection, Query) of
+        Result = ok ->
+            {reply, Result, State};
+        Error ->
+            ?INFO_MSG("error happened, ~p ~n~n", [Error]),
+            {reply, {error, []}, State}
+    end;
+    % Result = Conn:remove(Collection, Query),
+    % {reply, Result, State};
 
 handle_call(Request, _From, State) ->
     ?INFO_MSG("Unexpected call: ~p~n~n", [Request]),

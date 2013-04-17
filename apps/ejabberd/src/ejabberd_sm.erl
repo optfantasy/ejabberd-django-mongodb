@@ -725,12 +725,19 @@ send_message(LocalUser, User, Server, Message) ->
     % io:format("========~p ~p ~p ~n",[User, Server, Message]),
     LUser = list_to_binary(User),
     LServer = list_to_binary(Server),
-    ToJID=jlib:make_jid(LUser,LServer,<<"">>),
-    FromJID=jlib:make_jid(LocalUser,LServer,<<"">>),
-    % route_message(FromJID, ToJID,{xmlelement,<<"message">>,[{<<"to">>,<<"gage@localhost">>},{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,<<"cccc">>}]}]}),
-    ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
-%    ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"chat">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
-    ok.
+    
+    % io:format('=================== OFFLINE ~p ============= ~n~n', [dirty_get_sessions_list()]),
+    case ?SM_BACKEND:get_sessions(LUser, LServer) of
+        [] ->
+            offine;
+        SS ->
+            ToJID=jlib:make_jid(LUser,LServer,<<"">>),
+            FromJID=jlib:make_jid(<<"">>,LServer,<<"">>),
+            % route_message(FromJID, ToJID,{xmlelement,<<"message">>,[{<<"to">>,<<"gage@localhost">>},{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,<<"cccc">>}]}]}),
+            ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
+        %    ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"chat">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
+            ok
+    end.
 
 -spec sm_backend(atom()) -> string().
 sm_backend(Backend) ->

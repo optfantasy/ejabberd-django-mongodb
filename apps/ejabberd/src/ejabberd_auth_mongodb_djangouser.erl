@@ -180,11 +180,22 @@ mongo_user_exists(User, Server) ->
     % DB_dbname = list_to_binary(ejabberd_config:get_local_option({mongodb_djangouser_db, Server})),
     % Conn = mongoapi:new(xmpp_mongo, DB_dbname),
     % {ok, Data} = Conn:find(auth_user, [{'or', [{"username", User}, {"_id", {oid,User}}]}], undefined, 0, 1),
-    {ok, Data} = mod_mongodb:find(<<"auth_user">>, [{'or', [{"username", User}, {"_id", {oid,User}}]}]),
-    case length(Data) of
-        0 -> false;
-        1 -> true
+    case mod_mongodb:find(<<"auth_user">>, [{"_id", {oid, User}}]) of
+        {ok, Data} when length(Data) == 1 ->
+            true;
+        _ ->
+            case mod_mongodb:find(<<"auth_user">>, [{"username", User}]) of
+                {ok, Data} when length(Data) == 1 ->
+                    true;
+                _ ->
+                    false
+            end
     end.
+    % {ok, Data} = mod_mongodb:find(<<"auth_user">>, [{'or', [{"username", User}, {"_id", {oid,User}}]}]),
+    % case length(Data) of
+    %     0 -> false;
+    %     1 -> true
+    % end.
 
 
 mongo_check_password(User, Password, Server) ->
