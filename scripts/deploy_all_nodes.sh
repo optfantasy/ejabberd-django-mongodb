@@ -30,22 +30,14 @@ execute_script_remote() {
     ssh $REMOTE_USER@$REMOTE_HOST "chmod 755 /tmp/$TEMP_SCRIPT_NAME ; /tmp/$TEMP_SCRIPT_NAME $ARGUMENTS; chmod 644 /tmp/$TEMP_SCRIPT_NAME"
 }
 
+## Ejabberd Nodes Deployment
+# clean nodes
 make productionclean
 
 # templating var.config
 ./scripts/gen_global_setting.sh ${DEPLOY_VER}
 
-# Stop all server nodes
-for TARGET_HOST in `awk -F, '{print $1}' $DEPLOY_TABLE`
-do
-    #stop server
-    #ssh $USER:$TARGET_HOST 'bash -s' < scripts/stop_ejabberd.sh
-    execute_script_remote scripts/stop_ejabberd.sh $USER $TARGET_HOST
-done
-
-TARGETS=""
-
-# deploy and start nodes
+# Build all nodes
 for TARGET_LINE in `cat $DEPLOY_TABLE`
 do
     export TARGET_LINE
@@ -54,31 +46,34 @@ do
 
     echo "TARGET_HOST: $TARGET_HOST"
     echo "TARGET_TYPE: $TARGET_TYPE"
-    #deploy
-    #make generate_setting IN_TMPL=$TARGET_TYPE OUT_TMPL=$TARGET_HOST
+    # templating var_{nodes}.config for each node
     scripts/gen_${TARGET_TYPE}_setting.sh $TARGET_HOST $DEPLOY_VER
-
+    # build each node
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
-    
-    TARGETS="$TARGETS $TARGET_HOST"
 done
 
-echo "Generate rel files for $TARGETS"
-#make productionrel PRODUCTION_NODES="$TARGETS"
+# Stop all server nodes
+for TARGET_HOST in `awk -F, '{print $1}' $DEPLOY_TABLE`
+do
+    #stop server
+    execute_script_remote scripts/stop_ejabberd.sh $USER $TARGET_HOST
+done
 
+# deploy and start nodes
 for TARGET_LINE in `cat $DEPLOY_TABLE`
 do
     TARGET_HOST=`echo $TARGET_LINE | awk -F, '{print $1}'`
     TARGET_TYPE=`echo $TARGET_LINE | awk -F, '{print $2}'`
 
+    #deploy server
     scp -q -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
     ssh $USER@$TARGET_HOST "cp -r ejabberd/Mnesia* ejabberd-new ; rm -rf ejabberd-old;  mv ejabberd ejabberd-old ; mv ejabberd-new ejabberd"
+
     #start server
-    #ssh $USER:$TARGET_HOST 'bash -s' < scripts/start_ejabberd.sh
     if [ "$TARGET_TYPE" = "slave" ]; then
-    execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST $FIRST_NODE
+        execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST $FIRST_NODE
     else 
-    execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
+        execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
     fi
 done
 
@@ -92,13 +87,16 @@ do
     TARGET_TYPE=`echo $TARGET_LINE | awk -F, '{print $2}'`
 
     if [ "$TARGET_TYPE" = "slave" ]; then
-    echo "Do mnesia sync @ '$TARGET_HOST'"
-    execute_script_remote scripts/db_sync.sh $USER $TARGET_HOST ejabberd@$FIRST_NODE
+        echo "Do mnesia sync @ '$TARGET_HOST'"
+        execute_script_remote scripts/db_sync.sh $USER $TARGET_HOST ejabberd@$FIRST_NODE
     fi
 done
 
+# record this time deploying
 git add $DEPLOY_TABLE && git commit -m "updated ${DEPLOY_TABLE}" > /dev/null
 
+
+## Proxy Deployment
 # Proxy setting
 scp $DEPLOY_TABLE $PROXY_USER@$PROXY_HOST:$PROXY_SETTING
 

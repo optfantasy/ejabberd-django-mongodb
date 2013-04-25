@@ -1,1 +1,1 @@
-./deploy_all_nodes.sh prod
+scripts/deploy_all_nodes.sh prod

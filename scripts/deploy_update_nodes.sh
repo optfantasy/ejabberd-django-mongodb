@@ -62,7 +62,7 @@ make productionclean
 ./scripts/gen_global_setting.sh ${DEPLOY_VER}
 
 
-diff_result=`./diff_deploy_table.sh ${DEPLOY_VER}`
+diff_result=`scripts/diff_deploy_table.sh ${DEPLOY_VER}`
 #diff_result=`cat testdiff` # for testing
 
 nodes_add=`echo "$diff_result" | grep "^+" --color=never | awk '{ print $2; }'`
