@@ -58,7 +58,7 @@ done
 for TARGET_HOST in `awk -F, '{print $1}' $DEPLOY_TABLE`
 do
     #stop server
-    execute_script_remote scripts/stop_ejabberd.sh $USER $TARGET_HOST
+    execute_script_remote scripts/remote_commands/stop_ejabberd.sh $USER $TARGET_HOST
 done
 
 # deploy and start nodes
