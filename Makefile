@@ -131,11 +131,11 @@ rebar:
 # 	<type> :: "master" | "slave"
 # 	<node_name> :: <string>
 DEPLOY_VER=dev
-TMPL_DIR = ./rel/reltool_vars/templates
+TMPL_DIR = ./config_template/${DEPLOY_VER}/node_config
 IN_TMPL  = master # must be either "master" or "slave".
 OUT_TMPL = production1 # the node name
-IN_TMPL_PATH  = $(TMPL_DIR)/template_$(IN_TMPL)_vars-$(DEPLOY_VER).config
-OUT_TMPL_PATH = $(TMPL_DIR)/../$(OUT_TMPL)_vars.config
+IN_TMPL_PATH  = $(TMPL_DIR)/template_$(IN_TMPL)_vars.config
+OUT_TMPL_PATH = ./rel/reltool_vars/$(OUT_TMPL)_vars.config
 
 generate_setting:
 	cp $(IN_TMPL_PATH) $(OUT_TMPL_PATH)

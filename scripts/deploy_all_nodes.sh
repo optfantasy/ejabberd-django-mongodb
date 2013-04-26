@@ -10,8 +10,10 @@ fi
 
 USER=ejabberd
 DEPLOY_VER=$1
-DEPLOY_TABLE=./deploytables/deploy_table-${DEPLOY_VER}.csv
-DEPLOY_PROXY_TABLE=./deploytables/proxy_table-${DEPLOY_VER}.csv
+TEMPLATE_FOLDER=./config_template/${DEPLOY_VER}
+TEMPLATE_TABLE_FOLDER=${TEMPLATE_FOLDER}/deploy_table
+DEPLOY_TABLE=${TEMPLATE_TABLE_FOLDER}/deploy_table.csv
+DEPLOY_PROXY_TABLE=${TEMPLATE_TABLE_FOLDER}/proxy_table.csv
 PROXY_HOST=`cat ${DEPLOY_PROXY_TABLE} | head -1`
 PROXY_USER=ejabberd
 PROXY_SETTING=~/nodes.csv
@@ -35,7 +37,7 @@ execute_script_remote() {
 make productionclean
 
 # templating var.config
-./scripts/gen_global_setting.sh ${DEPLOY_VER}
+./scripts/gen_setting.sh global ${DEPLOY_VER}
 
 # Build all nodes
 for TARGET_LINE in `cat $DEPLOY_TABLE`
@@ -47,7 +49,7 @@ do
     echo "TARGET_HOST: $TARGET_HOST"
     echo "TARGET_TYPE: $TARGET_TYPE"
     # templating var_{nodes}.config for each node
-    scripts/gen_${TARGET_TYPE}_setting.sh $TARGET_HOST $DEPLOY_VER
+    scripts/gen_setting.sh $TARGET_TYPE $DEPLOY_VER $TARGET_HOST
     # build each node
     make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
 done
@@ -67,14 +69,11 @@ do
 
     #deploy server
     scp -q -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
+    #backup old snapshot
     ssh $USER@$TARGET_HOST "cp -r ejabberd/Mnesia* ejabberd-new ; rm -rf ejabberd-old;  mv ejabberd ejabberd-old ; mv ejabberd-new ejabberd"
 
     #start server
-    if [ "$TARGET_TYPE" = "slave" ]; then
-        execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST $FIRST_NODE
-    else 
-        execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
-    fi
+    execute_script_remote scripts/remote_commands/start_ejabberd.sh $USER $TARGET_HOST
 done
 
 # Wait it start.
@@ -88,7 +87,7 @@ do
 
     if [ "$TARGET_TYPE" = "slave" ]; then
         echo "Do mnesia sync @ '$TARGET_HOST'"
-        execute_script_remote scripts/db_sync.sh $USER $TARGET_HOST ejabberd@$FIRST_NODE
+        execute_script_remote scripts/remote_commands/db_sync.sh $USER $TARGET_HOST ejabberd@$FIRST_NODE
     fi
 done
 
