@@ -10,8 +10,10 @@ fi
 
 USER=ejabberd
 DEPLOY_VER=$1
-DEPLOY_TABLE=./deploytables/deploy_table-${DEPLOY_VER}.csv
-DEPLOY_PROXY_TABLE=./deploytables/proxy_table-${DEPLOY_VER}.csv
+TEMPLATE_FOLDER=./config_template/${DEPLOY_VER}
+TEMPLATE_TABLE_FOLDER=${TEMPLATE_FOLDER}/deploy_table
+DEPLOY_TABLE=${TEMPLATE_TABLE_FOLDER}/deploy_table.csv
+DEPLOY_PROXY_TABLE=${TEMPLATE_TABLE_FOLDER}/proxy_table.csv
 PROXY_USER=ejabberd
 PROXY_HOST=`cat ${DEPLOY_PROXY_TABLE} | head -1`
 PROXY_SETTING=~/nodes.csv
@@ -32,27 +34,28 @@ execute_script_remote() {
 
 # function to deploy a new node
 # usage: add_node <node_host> <node_type>
+build_node () {
+    TARGET_HOST=$1
+    TARGET_TYPE=$2
+
+    scripts/gen_setting.sh ${TARGET_TYPE} ${DEPLOY_VER} ${TARGET_HOST}
+
+    make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
+}
 add_node () {
     TARGET_HOST=$1
     TARGET_TYPE=$2
 
-    scripts/gen_${TARGET_TYPE}_setting.sh ${TARGET_HOST}
-
-    make productionrel_node TARGET_PRODUCT="$TARGET_HOST"
     scp -q -r production/ejabberd_$TARGET_HOST $USER@$TARGET_HOST:~/ejabberd-new
     ssh $USER@$TARGET_HOST "cp -r ejabberd/Mnesia* ejabberd-new ; rm -rf ejabberd-old;  mv ejabberd ejabberd-old ; mv ejabberd-new ejabberd"
-    if [ "$TARGET_TYPE" = "slave" ]; then
-    execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST $FIRST_NODE
-    else 
-    execute_script_remote scripts/start_ejabberd.sh $USER $TARGET_HOST
-    fi
+    execute_script_remote scripts/remote_commands/start_ejabberd.sh $USER $TARGET_HOST
 }
 
 # function to stop a node
 # usage: remove_node <node_host>
 remove_node() {
 	TARGET_HOST=$1
-	execute_script_remote scripts/stop_ejabberd.sh $USER $TARGET_HOST
+	execute_script_remote scripts/remote_commands/stop_ejabberd.sh $USER $TARGET_HOST
 }
 
 
@@ -70,6 +73,17 @@ nodes_remove=`echo "$diff_result" | grep "^-" --color=never | awk '{ print $2; }
 
 echo $nodes_add
 echo $nodes_remove
+
+
+# building new nodes...
+for TARGET_LINE in $nodes_add  
+do
+    NODE_HOST=`echo $TARGET_LINE | awk -F"," '{ print $1 }'`
+    NODE_TYPE=`echo $TARGET_LINE | awk -F"," '{ print $2 }'`
+
+    echo "build_node $NODE_HOST $NODE_TYPE"
+    build_node $NODE_HOST $NODE_TYPE
+done
 
 # starting new nodes...
 for TARGET_LINE in $nodes_add  
@@ -100,7 +114,7 @@ do
     echo "Do mnesia sync @ '$NODE_HOST'"
 
     if [ "$NODE_TYPE" = "slave" ]; then
-    execute_script_remote scripts/db_sync.sh $USER $NODE_HOST ejabberd@$FIRST_NODE
+    execute_script_remote scripts/remote_commands/db_sync.sh $USER $NODE_HOST ejabberd@$FIRST_NODE
     fi
 done
 
