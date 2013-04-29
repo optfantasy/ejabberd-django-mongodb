@@ -69,15 +69,15 @@ start_link(Host, Opts) ->
 	gen_server:start_link({local, Proc}, ?MODULE, [Host, Opts], []).
 
 init([_Host, Opts]) ->
-    inets:start(),
+    % inets:start(),
     ?INFO_MSG("*** INIT", []),
-    case catch ets:new(gulu_group_timestamp, [ordered_set, public, named_table]) of
-        gulu_group_timestamp -> ok;
-        _ ->
-            catch ets:delete(gulu_group_timestamp),
-            ets:new(gulu_group_timestamp, [ordered_set, public, named_table])
-    end,
-	timer:send_interval(?INTERVAL, update_message_timestamp),
+    % case catch ets:new(gulu_group_timestamp, [ordered_set, public, named_table]) of
+    %     gulu_group_timestamp -> ok;
+    %     _ ->
+    %         catch ets:delete(gulu_group_timestamp),
+    %         ets:new(gulu_group_timestamp, [ordered_set, public, named_table])
+    % end,
+	% timer:send_interval(?INTERVAL, update_message_timestamp),
 	
     API_URL = gen_mod:get_opt(gulu_api_url, Opts, "http://localhost:8000"),
 	Host = gen_mod:get_opt(hosts, Opts, ["localhost:27017"]),
@@ -259,7 +259,7 @@ save_packet(From, To, Packet, Type, Attrs) ->
 
             case Type of
                 <<"groupchat">> ->
-                    ets:insert(gulu_group_timestamp, {prepare(ToJid), Timestamp}),
+                    % ets:insert(gulu_group_timestamp, {prepare(ToJid), Timestamp}),
                     % ?INFO_MSG("ready to send... ~p~n~n", [Rec]),
                     Proc = gen_mod:get_module_proc(FromHost, ?PROCNAME),
                     gen_server:cast(Proc, {
