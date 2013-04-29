@@ -108,24 +108,15 @@ handle_call(Request, _From, State) ->
 	?INFO_MSG("Unexpected call: ~p~n~n", [Request]),
 	{reply, ok, State}.
 
-handle_cast({apns, MSG_UUID, BODY, FromJid, ToJid}, S=#state{conn=Conn, collection=_Coll, api_url=API_URL}) ->
-    % ?INFO_MSG("push Message: ~p ~p~n~n", [MSG_UUID, BODY]),
-    % {ok, Groups} = Conn:find("group_group", [{"_id", {oid, ToJid}}], undefined, 0, 1),
-    % case Groups of
-    %     [] ->
-    %         ?ERROR_MSG("======================================= no group: ~p~n~n~n", [ToJid]),
-    %         {error, no_group};
-    %     _ ->
-    %         Group = lists:nth(1, Groups),
-    %         Members = proplists:get_value(<<"members">>, Group),
-    %         ?INFO_MSG("======================================= members: ~p~n~n~n", [Members])
-    % end,
-    apns_by_django(MSG_UUID, BODY, FromJid, API_URL),
+handle_cast({apns, MSG_UUID, BODY, FromJid, ToJid, MicroTime,FromResource}, S=#state{conn=Conn, collection=_Coll, api_url=API_URL}) ->
+    % ?INFO_MSG("push Message: ~p ~n~n", [{MSG_UUID, BODY, FromJid, ToJid, MicroTime,FromResource}]),
+    apns_by_django(MSG_UUID, BODY, FromJid, ToJid, MicroTime, FromResource, API_URL),
     {noreply, S};
 
 handle_cast({save, Rec}, S=#state{conn=Conn, collection=Coll}) ->
     % ?INFO_MSG("========================================Save Message: ~p~n~n", [Rec]),
-    Conn:save(Coll, Rec),
+    % Conn:save(Coll, Rec),
+    mod_mongodb:save(Coll, Rec),
     {noreply, S};
 
 handle_cast({update, Rec, CombineUUID, CombineBody, Timestamp, MicroTime}, S=#state{conn=Conn, collection=Coll}) ->
@@ -227,12 +218,7 @@ save_packet(From, To, Packet, Type, Attrs) ->
                 <<>> -> list_to_binary(uuid:to_string(uuid:uuid4()));
                 _ -> UUID
             end,
-    TAGS = case Tags = xml:get_path_s(Packet, [{elem, <<"info">>}, {attr, <<"tags">>}]) of
-                <<>> -> [];
-                _ -> string:tokens(binary_to_list(Tags), ",")
-            end,
-    % CombineUUID = xml:get_attr_s(<<"combine">>, Attrs),
-    CombineUUID = xml:get_path_s(Packet, [{elem, <<"info">>}, {attr, <<"combine">>}]),
+    Tags = xml:get_path_s(Packet, [{elem, <<"info">>}, {attr, <<"tags">>}]),
 
 	case Body of
 		<<"">> -> %% don't log empty messages
@@ -253,22 +239,22 @@ save_packet(From, To, Packet, Type, Attrs) ->
 			Timestamp = unix_timestamp(),
 			MicroTime = now_us(erlang:now()),
 
-          	Rec = [
-	        	{<<"_from_user">>, prepare(FromJid)},
-                {<<"from_host">>, prepare(FromHost)},
-                {<<"from_resource">>, prepare(FromResource)},
-                {<<"_to_group">>, prepare(ToJid)},
-                {<<"to_host">>, prepare(ToHost)},
-                {<<"to_resource">>, prepare(ToResource)},
-                {<<"content">>, Body},
-                {<<"timestamp">>, Timestamp},
-                {<<"timestamp_micro">>, MicroTime},
-                {<<"msg_type">>, Type},
-                {<<"msg_uuid">>, MsgUUID},
-                {<<"in_timeline">>, false},
-                {<<"_doing_timeline">>, false},
-                {<<"tags">>, {array, array_list_to_binary(TAGS)}}
-            ],
+          % 	Rec = [
+	        	% {<<"_from_user">>, prepare(FromJid)},
+          %       {<<"from_host">>, prepare(FromHost)},
+          %       {<<"from_resource">>, prepare(FromResource)},
+          %       {<<"_to_group">>, prepare(ToJid)},
+          %       {<<"to_host">>, prepare(ToHost)},
+          %       {<<"to_resource">>, prepare(ToResource)},
+          %       {<<"content">>, Body},
+          %       {<<"timestamp">>, Timestamp},
+          %       {<<"timestamp_micro">>, MicroTime},
+          %       {<<"msg_type">>, Type},
+          %       {<<"msg_uuid">>, MsgUUID},
+          %       {<<"in_timeline">>, false},
+          %       {<<"_doing_timeline">>, false},
+          %       {<<"tags">>, {array, array_list_to_binary(TAGS)}}
+          %   ],
 
 
             case Type of
@@ -276,33 +262,31 @@ save_packet(From, To, Packet, Type, Attrs) ->
                     ets:insert(gulu_group_timestamp, {prepare(ToJid), Timestamp}),
                     % ?INFO_MSG("ready to send... ~p~n~n", [Rec]),
                     Proc = gen_mod:get_module_proc(FromHost, ?PROCNAME),
-                    % ?INFO_MSG("ready to send...proc ~p~n~n", [Proc]),
-                    case CombineUUID of
-                        <<"">> ->
-                            gen_server:cast(Proc, {save, Rec}),
-                            gen_server:cast(Proc, {apns, binary_to_list(MsgUUID), unicode:characters_to_list(Body), FromJid, ToJid});
-                            % ?INFO_MSG("======ready to sended ~p~n~n", [Proc]);
-                        _ ->
-                            % CombineBody = exmpp_xml:get_cdata(exmpp_xml:get_element(Packet, "combinebody")),
-                            CombineBody = xml:get_path_s(Packet, [{elem, <<"combinebody">>}, cdata]),
-
-                            gen_server:cast(Proc, {update, Rec, CombineUUID, CombineBody, Timestamp, MicroTime}),
-                            gen_server:cast(Proc, {apns, binary_to_list(CombineUUID), unicode:characters_to_list(Body), FromJid, ToJid})
-                            % ?INFO_MSG("======ready to update ~p ~p ~p~n~n", [Proc, CombineUUID, CombineBody])
-                    end;
+                    gen_server:cast(Proc, {
+                        apns,
+                        binary_to_list(MsgUUID),
+                        unicode:characters_to_list(Body),
+                        prepare_list(FromJid),
+                        prepare_list(ToJid),
+                        integer_to_list(MicroTime),
+                        prepare_list(FromResource)
+                    });
                 _ ->
                     ?DEBUG("We only logging groupchat: type = ~p",[Type]),
                     ok
             end
 	end.
 
-apns_by_django(MSG_UUID, BODY, FromJid, API_URL) ->
+apns_by_django(MSG_UUID, BODY, FromJid, ToJid, MicroTime, FromResource, API_URL) ->
     ?INFO_MSG("APNS DATA : ~p ~p", [MSG_UUID, BODY]),
-    FromJid2 = case is_binary(FromJid) of
-        true -> binary_to_list(FromJid);
-        _ -> FromJid
-    end,
-    Data = string:join(["post_key=2vsAATy79N&msg_uuid=", MSG_UUID, "&body=", encode(BODY), "&username=", FromJid2], ""),
+    Data = string:join([
+        "post_key=2vsAATy79N&msg_uuid=",MSG_UUID,
+        "&body=", encode(BODY),
+        "&username=", FromJid,
+        "&to_group=", ToJid,
+        "&micro_ts=", MicroTime,
+        "&from_resource=", FromResource
+        ],""),
     ?INFO_MSG("APNS DATA : ~p", [Data]),
     URL = string:join([API_URL, "/api/chat/apns/"], ""),
     httpc:request(post,
