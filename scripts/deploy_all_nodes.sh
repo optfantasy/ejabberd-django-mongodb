@@ -61,6 +61,8 @@ do
     execute_script_remote scripts/remote_commands/stop_ejabberd.sh $USER $TARGET_HOST
 done
 
+echo "[deploy_nodes] Stage deploy_nodes ...... [INIT]"
+
 # deploy and start nodes
 for TARGET_LINE in `cat $DEPLOY_TABLE`
 do
@@ -76,8 +78,21 @@ do
     execute_script_remote scripts/remote_commands/start_ejabberd.sh $USER $TARGET_HOST
 done
 
+echo "[deploy_nodes] Stage db_sync ...... [OK]"
+
 # Wait it start.
-sleep 10
+
+echo "[dbsync] Stage db_sync ...... [INIT]"
+
+INV=2
+IS_RUNNING=`ssh $FIRST_NODE "bash ~/ejabberd/bin/ejabberdctl mnesia"|grep is_running|awk -F, '{print $2}'|sed 's/}$//'`
+
+while [ "yes" != "$IS_RUNNING" ]
+do
+    sleep $INV
+    echo "sleep & test mnesia @ $FIRST_NODE"
+    IS_RUNNING=`ssh $FIRST_NODE "bash ~/ejabberd/bin/ejabberdctl mnesia"|grep is_running|awk -F, '{print $2}'|sed 's/}$//'`
+done
 
 # After deploying, do db_sync for all slave node.
 for TARGET_LINE in `cat $DEPLOY_TABLE`
@@ -90,6 +105,8 @@ do
         execute_script_remote scripts/remote_commands/db_sync.sh $USER $TARGET_HOST ejabberd@$FIRST_NODE
     fi
 done
+
+echo "[dbsync] Stage db_sync ...... [OK]"
 
 # record this time deploying
 git add $DEPLOY_TABLE && git commit -m "updated ${DEPLOY_TABLE}" > /dev/null
