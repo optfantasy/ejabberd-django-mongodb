@@ -115,15 +115,12 @@ get_password_s(User, Server) ->
     % try DBConnection:find(<<"auth_user">>, [{<<"username">>, User}], undefined, 0, 1) of
     try mod_mongodb:find(<<"auth_user">>, [{<<"username">>, User}]) of
         {ok, []} -> 
+            %io:format(">>>>>>>>>>>>>>>>>>>>>>>>>>Not authuser...~n", []),
             % try DBConnection:find(<<"auth_user">>, [{<<"_id">>, {oid,User}}], undefined, 0, 1) of
-            try mod_mongodb:find(<<"auth_user">>, [{<<"_id">>, {oid,User}}]) of
+            try mod_mongodb:find(<<"user_profiles_userprofile">>, [{<<"user_id">>, {oid, User}}]) of
                 {ok, []} ->
                     {error, not_allowed};
-                {ok, Data_authuser_list} ->
-                    Data_authuser = lists:nth(1, Data_authuser_list),
-                    Data_authuser_oid = proplists:get_value(<<"_id">>, Data_authuser),
-                    % {ok, Data_userprofile_list} = DBConnection:find(<<"user_profiles_userprofile">>, [{<<"user_id">>, Data_authuser_oid}], undefined, 0, 1),
-                    {ok, Data_userprofile_list} = mod_mongodb:find(<<"user_profiles_userprofile">>, [{<<"user_id">>, Data_authuser_oid}]),
+                {ok, Data_userprofile_list} ->
                     case Data_userprofile_list of
                         [] ->
                             {error, not_allowed};
