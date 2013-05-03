@@ -733,9 +733,9 @@ send_message(LocalUser, User, Server, Message) ->
         SS ->
             ToJID=jlib:make_jid(LUser,LServer,<<"">>),
             FromJID=jlib:make_jid(<<"">>,LServer,<<"">>),
-            % route_message(FromJID, ToJID,{xmlelement,<<"message">>,[{<<"to">>,<<"gage@localhost">>},{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,<<"cccc">>}]}]}),
-            ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"pubsub">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
-        %    ejabberd_router:route(FromJID, ToJID, {xmlelement,<<"message">>,[{<<"type">>,<<"chat">>}],[{xmlelement,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
+            % route_message(FromJID, ToJID,{xmlel,<<"message">>,[{<<"to">>,<<"gage@localhost">>},{<<"type">>,<<"pubsub">>}],[{xmlel,<<"body">>,[],[{xmlcdata,<<"cccc">>}]}]}),
+            ejabberd_router:route(FromJID, ToJID, {xmlel,<<"message">>,[{<<"type">>,<<"pubsub">>}],[{xmlel,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
+        %    ejabberd_router:route(FromJID, ToJID, {xmlel,<<"message">>,[{<<"type">>,<<"chat">>}],[{xmlel,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
             ok
     end.
 

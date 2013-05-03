@@ -197,7 +197,7 @@ log_user_send(From, To, Packet) ->
 
 %% private
 
-log_packet(From, To, Packet = {xmlelement, <<"message">>, Attrs, _Els}) ->
+log_packet(From, To, Packet = {xmlel, <<"message">>, Attrs, _Els}) ->
     Type = xml:get_attr_s(<<"type">>, Attrs), 
 	case Type of
 		"error" -> %% we don't log errors

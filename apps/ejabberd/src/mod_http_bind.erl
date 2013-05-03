@@ -61,7 +61,7 @@
 process([], #request{method = 'POST',
                      data = []}) ->
     ?DEBUG("Bad Request: no data", []),
-    {400, ?HEADER, {xmlelement, "h1", [],
+    {400, ?HEADER, {xmlel, "h1", [],
                     [{xmlcdata, "400 Bad Request"}]}};
 process([], #request{method = 'POST',
                      data = Data,
@@ -78,22 +78,22 @@ process([], #request{method = 'HEAD'}) ->
     {200, ?HEADER, []};
 process(_Path, _Request) ->
     ?DEBUG("Bad Request: ~p", [_Request]),
-    {400, ?HEADER, {xmlelement, "h1", [],
+    {400, ?HEADER, {xmlel, "h1", [],
                     [{xmlcdata, "400 Bad Request"}]}}.
 
 get_human_html_xmlel() ->
     Heading = "ejabberd " ++ atom_to_list(?MODULE),
-    {xmlelement, "html", [{"xmlns", "http://www.w3.org/1999/xhtml"}],
-     [{xmlelement, "head", [],
-       [{xmlelement, "title", [], [{xmlcdata, Heading}]}]},
-      {xmlelement, "body", [],
-       [{xmlelement, "h1", [], [{xmlcdata, Heading}]},
-        {xmlelement, "p", [],
+    {xmlel, "html", [{"xmlns", "http://www.w3.org/1999/xhtml"}],
+     [{xmlel, "head", [],
+       [{xmlel, "title", [], [{xmlcdata, Heading}]}]},
+      {xmlel, "body", [],
+       [{xmlel, "h1", [], [{xmlcdata, Heading}]},
+        {xmlel, "p", [],
          [{xmlcdata, "An implementation of "},
-          {xmlelement, "a",
+          {xmlel, "a",
 	   [{"href", "http://xmpp.org/extensions/xep-0206.html"}],
            [{xmlcdata, "XMPP over BOSH (XEP-0206)"}]}]},
-        {xmlelement, "p", [],
+        {xmlel, "p", [],
          [{xmlcdata, "This web page is only informative. "
 	   "To use HTTP-Bind you need a Jabber/XMPP client that supports it."}
 	 ]}

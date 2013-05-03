@@ -807,7 +807,7 @@ handle_http_put(Sid, Rid, Attrs, Payload, PayloadSize, StreamStart, IP) ->
 	    timer:sleep(Pause),
             %{200, ?HEADER,
             % xml:element_to_binary(
-            %   {xmlelement, "body",
+            %   {xmlel, "body",
             %    [{"xmlns", ?NS_HTTP_BIND},
             %     {"type", "error"}], []})};
             handle_http_put(Sid, Rid, Attrs, Payload, PayloadSize,
@@ -847,21 +847,21 @@ handle_http_put_error(Reason, #http_bind{pid=FsmRef, version=Version})
         not_exists ->
             {200, ?HEADER,
              xml:element_to_binary(
-               {xmlelement, "body",
+               {xmlel, "body",
                 [{"xmlns", ?NS_HTTP_BIND},
                  {"type", "terminate"},
                  {"condition", "item-not-found"}], []})};
         bad_key ->
             {200, ?HEADER,
              xml:element_to_binary(
-               {xmlelement, "body",
+               {xmlel, "body",
                 [{"xmlns", ?NS_HTTP_BIND},
                  {"type", "terminate"},
                  {"condition", "item-not-found"}], []})};
         polling_too_frequently ->
             {200, ?HEADER,
              xml:element_to_binary(
-               {xmlelement, "body",
+               {xmlel, "body",
                 [{"xmlns", ?NS_HTTP_BIND},
                  {"type", "terminate"},
                  {"condition", "policy-violation"}], []})}
@@ -967,14 +967,14 @@ prepare_outpacket_response(#http_bind{id=Sid, wait=Wait,
 		    [] ->
 			[];
 		    [{xmlstreamelement,
-		      {xmlelement, <<"stream:features">>,
+		      {xmlel, <<"stream:features">>,
 		       StreamAttribs, StreamEls}}
 		     | StreamTail] ->
 			TypedTail =
 			    [check_default_xmlns(OEl) ||
 				{xmlstreamelement, OEl} <-
 				    StreamTail],
-			[{xmlelement, <<"stream:features">>,
+			[{xmlel, <<"stream:features">>,
 			  [{<<"xmlns:stream">>,
 			    ?NS_STREAM}] ++
 			  StreamAttribs, StreamEls}] ++
@@ -985,7 +985,7 @@ prepare_outpacket_response(#http_bind{id=Sid, wait=Wait,
 				StreamTail]
 		end,
 	    case OutEls of 
-		[{xmlelement,
+		[{xmlel,
 		  <<"stream:error">>,_,_}] ->
 		    {200, ?HEADER, "<body type='terminate' "
 		     "condition='host-unknown' "
@@ -1005,7 +1005,7 @@ prepare_outpacket_response(#http_bind{id=Sid, wait=Wait,
 		    MaxPause = get_max_pause(To),
 		    {200, ?HEADER,
 		     xml:element_to_binary(
-		       {xmlelement,<<"body">>,
+		       {xmlel,<<"body">>,
 			[{<<"xmlns">>,
 			  ?NS_HTTP_BIND},
 			 {<<"sid">>, Sid},
@@ -1051,7 +1051,7 @@ send_outpacket(#http_bind{pid = FsmRef}, OutPacket) ->
 	    %% packet in most case.
 	    AllElements =
 		lists:all(fun({xmlstreamelement,
-			       {xmlelement, <<"stream:error">>, _, _}}) -> false;
+			       {xmlel, <<"stream:error">>, _, _}}) -> false;
 			     ({xmlstreamelement, _}) -> true;
 			     ({xmlstreamraw, _}) -> true;
 			     (_) -> false
@@ -1081,7 +1081,7 @@ send_outpacket(#http_bind{pid = FsmRef}, OutPacket) ->
 			    OutEls =
 				case SEls of
 				    [{xmlstreamelement,
-				      {xmlelement,
+				      {xmlel,
 				       <<"stream:features">>,
 				       StreamAttribs, StreamEls}} |
 				     StreamTail] ->
@@ -1089,7 +1089,7 @@ send_outpacket(#http_bind{pid = FsmRef}, OutPacket) ->
 					    [check_default_xmlns(OEl) ||
 						{xmlstreamelement, OEl} <-
 						    StreamTail],
-					[{xmlelement,
+					[{xmlel,
 					  <<"stream:features">>,
 					  [{<<"xmlns:stream">>,
 					    ?NS_STREAM}] ++
@@ -1102,7 +1102,7 @@ send_outpacket(#http_bind{pid = FsmRef}, OutPacket) ->
 				end,
                             {200, ?HEADER,
                              xml:element_to_binary(
-                               {xmlelement,<<"body">>,
+                               {xmlel,<<"body">>,
                                 [{<<"xmlns">>,
                                   ?NS_HTTP_BIND}],
                                 OutEls})};
@@ -1110,7 +1110,7 @@ send_outpacket(#http_bind{pid = FsmRef}, OutPacket) ->
 			    SErrCond =
 				lists:filter(
 				  fun({xmlstreamelement,
-				       {xmlelement, <<"stream:error">>,
+				       {xmlel, <<"stream:error">>,
 					_, _}}) ->
 					  true;
 				     (_) -> false
@@ -1120,7 +1120,7 @@ send_outpacket(#http_bind{pid = FsmRef}, OutPacket) ->
 				    [] ->
 					null;
 				    [{xmlstreamelement,
-				      {xmlelement, _, _, _Cond} =
+				      {xmlel, _, _, _Cond} =
 				      StreamErrorTag} | _] ->
 					[StreamErrorTag]
 				end,
@@ -1150,7 +1150,7 @@ parse_request(Data, PayloadSize, MaxStanzaSize) ->
     %% MR: I do not think it works if put put several elements in the
     %% same body:
     case xml_stream:parse_element(Data) of
-	{xmlelement, <<"body">>, Attrs, Els} ->
+	{xmlel, <<"body">>, Attrs, Els} ->
 	    Xmlns = xml:get_attr_s(<<"xmlns">>,Attrs),
 	    if
 		Xmlns /= ?NS_HTTP_BIND ->
@@ -1165,7 +1165,7 @@ parse_request(Data, PayloadSize, MaxStanzaSize) ->
                                 lists:filter(
                                   fun(I) ->
                                           case I of
-                                              {xmlelement, _, _, _} ->
+                                              {xmlel, _, _, _} ->
                                                   true;
                                               _ ->
                                                   false
@@ -1180,7 +1180,7 @@ parse_request(Data, PayloadSize, MaxStanzaSize) ->
 			    end
                     end
 	    end;
-	{xmlelement, _Name, _Attrs, _Els} ->
+	{xmlel, _Name, _Attrs, _Els} ->
 	    {error, bad_request};
 	{error, _Reason} ->
 	    {error, bad_request}
@@ -1241,9 +1241,9 @@ tnow() ->
     {TMegSec, TSec, TMSec} = now(),
     (TMegSec * 1000000 + TSec) * 1000000 + TMSec.
 
-check_default_xmlns({xmlelement, Name, Attrs, Els} = El) ->
+check_default_xmlns({xmlel, Name, Attrs, Els} = El) ->
     case xml:get_tag_attr_s(<<"xmlns">>, El) of
-	"" -> {xmlelement, Name, [{<<"xmlns">>, ?NS_CLIENT} | Attrs], Els};
+	"" -> {xmlel, Name, [{<<"xmlns">>, ?NS_CLIENT} | Attrs], Els};
 	_  -> El
     end;
 check_default_xmlns(El) ->

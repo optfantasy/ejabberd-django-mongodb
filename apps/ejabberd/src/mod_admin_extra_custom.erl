@@ -121,7 +121,7 @@ subscribe(LocalUser, LocalServer, User, Server, Nick, Group, Subs, _Xattrs) ->
     {ok, M} = loaded_module(LocalServer,[mod_roster_odbc,mod_roster]),
     M:set_items(
     LocalUser, LocalServer,
-    {xmlelement,<<"query">>,
+    {xmlel,<<"query">>,
             [{<<"xmlns">>,"jabber:iq:roster"}],
             [ItemEl]}).
 
@@ -139,7 +139,7 @@ unsubscribe(LU, LS, User, Server) ->
     {ok, M} = loaded_module(LS,[mod_roster_odbc,mod_roster]),
     M:set_items(
     LU, LS,
-    {xmlelement,<<"query">>,
+    {xmlel,<<"query">>,
             [{<<"xmlns","jabber:iq:roster">>}],
             [ItemEl]}).
 
@@ -160,23 +160,23 @@ push_roster_item(LU, LS, R, U, S, Action) ->
     ejabberd_router:route(LJID, LJID, ResIQ).
 
 build_roster_item(U, S, {add, Nick, Subs, Group}) ->
-    {xmlelement, <<"item">>,
+    {xmlel, <<"item">>,
      [{<<"jid">>, jlib:jid_to_binary(jlib:make_jid(U, S, ""))},
       {<<"name">>, Nick},
       {<<"subscription">>, Subs}],
-     [{xmlelement, <<"group">>, [], [{xmlcdata, Group}]}]
+     [{xmlel, <<"group">>, [], [{xmlcdata, Group}]}]
     };
 build_roster_item(U, S, remove) ->
-    {xmlelement, <<"item">>,
+    {xmlel, <<"item">>,
      [{<<"jid">>, jlib:jid_to_binary(jlib:make_jid(U, S, ""))},
       {<<"subscription">>, <<"remove">>}],
      []
     }.
 
 build_iq_roster_push(Item) ->
-    {xmlelement, "iq",
+    {xmlel, "iq",
      [{"type", "set"}, {"id", "push"}],
-     [{xmlelement, "query",
+     [{xmlel, "query",
        [{"xmlns", ?NS_ROSTER}],
        [Item]
       }
@@ -190,7 +190,7 @@ build_broadcast(U, S, remove) ->
 %% @spec (U::string(), S::string(), Subs::atom()) -> any()
 %% Subs = both | from | to | none
 build_broadcast(U, S, SubsAtom) when is_atom(SubsAtom) ->
-    {xmlelement, <<"broadcast">>, [],
+    {xmlel, <<"broadcast">>, [],
      [{item, {U, S, ""}, SubsAtom}]
     }.
 

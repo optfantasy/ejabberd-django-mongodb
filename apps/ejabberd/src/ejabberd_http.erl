@@ -403,10 +403,10 @@ process_request(#state{request_method = Method,
 	    %% procedure (process) that handles dispatching based on
 	    %% URL path prefix.
 	    case process(RequestHandlers, Request) of
-		El when element(1, El) == xmlelement ->
+		El when element(1, El) == xmlel ->
 		    make_xhtml_output(State, 200, [], El);
 		{Status, Headers, El} when
-		element(1, El) == xmlelement ->
+		element(1, El) == xmlel ->
 		    make_xhtml_output(State, Status, Headers, El);
 		Output when is_list(Output) or is_binary(Output) ->
 		    make_text_output(State, 200, [], Output);
@@ -468,10 +468,10 @@ process_request(#state{request_method = Method,
 			       headers = RequestHeaders,
 			       ip = IP},
 	    case process(RequestHandlers, Request) of
-		El when element(1, El) == xmlelement ->
+		El when element(1, El) == xmlel ->
 		    make_xhtml_output(State, 200, [], El);
 		{Status, Headers, El} when
-		element(1, El) == xmlelement ->
+		element(1, El) == xmlel ->
 		    make_xhtml_output(State, Status, Headers, El);
 		Output when is_list(Output) or is_binary(Output) ->
 		    make_text_output(State, 200, [], Output);
@@ -487,7 +487,7 @@ make_bad_request(State) ->
     make_xhtml_output(State,
       400,
       [],
-      ejabberd_web:make_xhtml([{xmlelement, "h1", [],
+      ejabberd_web:make_xhtml([{xmlel, "h1", [],
 				[{xmlcdata, "400 Bad Request"}]}])).
 
 %% Support for X-Forwarded-From
@@ -639,7 +639,7 @@ parse_lang(Langs) ->
 
 element_to_string(El) ->
     case El of
-	{xmlelement, Name, Attrs, Els} ->
+	{xmlel, Name, Attrs, Els} ->
 	    if
 		Els /= [] ->
 		    [$<, Name, attrs_to_list(Attrs), $>,

@@ -117,7 +117,7 @@ get_option_access(Host) ->
 %% This function crashes if the stanza does not satisfy configured restrictions
 check_stanza(Stanza, _From, To, Host) ->
     check_member_option(Host, jlib:jid_to_string(To), allowed_destinations),
-    {xmlelement, StanzaType, _Attrs, _Kids} = Stanza,
+    {xmlel, StanzaType, _Attrs, _Kids} = Stanza,
     check_member_option(Host, StanzaType, allowed_stanza_types),
     allowed.
 
