@@ -7,6 +7,7 @@ EJD_PRIV_MIB = $(EJD_PRIV)/mibs
 EJD_MIB = $(EJABBERD_DIR)/mibs
 DEVNODES = node1 node2
 TESTNODES = internal_mnesia internal_redis odbc_mnesia odbc_redis external_mnesia external_redis
+PRODUCTIONNODES = production1 production2
 
 all: deps compile
 
@@ -38,6 +39,18 @@ devrel: $(DEVNODES)
 
 testrel: $(DEVNODES) $(TESTNODES)
 
+productionrel: $(PRODUCTIONNODES)
+
+productionrel_node: rebar deps compile deps_production
+	echo "building $(TARGET_PRODUCT)"
+	(cd rel && ../rebar generate -f target_dir=../production/ejabberd_$(TARGET_PRODUCT) overlay_vars=./reltool_vars/$(TARGET_PRODUCT)_vars.config)
+	cp apps/ejabberd/src/*.erl production/ejabberd_$(TARGET_PRODUCT)/lib/ejabberd-2.1.8/ebin/
+ifeq ($(shell uname), Linux)
+	cp -R `dirname $(shell readlink -f $(shell which erl))`/../lib/tools-* production/ejabberd_$(TARGET_PRODUCT)/lib/
+else
+	cp -R `which erl`/../../lib/tools-* production/ejabberd_$(TARGET_PRODUCT)/lib/
+endif
+
 $(DEVNODES) $(TESTNODES): rebar deps compile deps_dev
 	@echo "building $@"
 	(cd rel && ../rebar generate -f target_dir=../dev/ejabberd_$@ overlay_vars=./reltool_vars/$@_vars.config)
@@ -55,6 +68,22 @@ deps_dev:
 
 devclean:
 	rm -rf dev/*
+
+$(PRODUCTIONNODES): rebar deps compile deps_production
+	@echo "building $@"
+	(cd rel && ../rebar generate -f target_dir=../production/ejabberd_$@ overlay_vars=./reltool_vars/$@_vars.config)
+	cp apps/ejabberd/src/*.erl production/ejabberd_$@/lib/ejabberd-2.1.8/ebin/
+ifeq ($(shell uname), Linux)
+	cp -R `dirname $(shell readlink -f $(shell which erl))`/../lib/tools-* production/ejabberd_$@/lib/
+else
+	cp -R `which erl`/../../lib/tools-* production/ejabberd_$@/lib/
+endif
+
+deps_production:
+	mkdir -p production
+
+productionclean:
+	rm -rf production/*
 
 generate_snmp_header: apps/ejabberd/include/EJABBERD-MIB.hrl
 
@@ -94,4 +123,20 @@ test_deps: rebar
 rebar:
 	wget -q http://cloud.github.com/downloads/basho/rebar/rebar
 	chmod u+x rebar
+
+
+# The following stuffs are for generating settings from our master or slave templates.
+# Usage:
+# 	make generate_settings IN_TMPL=<type> OUT_TMPL=<node_name> DEPLOY_VER=<deploy_version>
+# 	<type> :: "master" | "slave"
+# 	<node_name> :: <string>
+DEPLOY_VER=dev
+TMPL_DIR = ./config_template/${DEPLOY_VER}/node_config
+IN_TMPL  = master # must be either "master" or "slave".
+OUT_TMPL = production1 # the node name
+IN_TMPL_PATH  = $(TMPL_DIR)/template_$(IN_TMPL)_vars.config
+OUT_TMPL_PATH = ./rel/reltool_vars/$(OUT_TMPL)_vars.config
+
+generate_setting:
+	cp $(IN_TMPL_PATH) $(OUT_TMPL_PATH)
 

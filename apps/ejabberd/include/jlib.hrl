@@ -320,6 +320,7 @@
 %-define(SERRT_(Lang, Text),
 %	?STREAM_ERRORT(<<"">>, Lang, Text)).
 
+-type(ljid() :: {binary(), binary(), binary()}).
 
 -record(jid, {
         user       :: binary(),
