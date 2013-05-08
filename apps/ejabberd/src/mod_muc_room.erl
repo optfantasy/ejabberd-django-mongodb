@@ -230,7 +230,7 @@ initial_state({route, From, ToNick,
             % process_presence(From, ToNick, Presence, StateData, locked_state);
             %% The fragment of normal_state with Activity that used to do this - how does that work?
             %% Seems to work without it
-            process_presence(From, ToNick, Presence, StateData)
+            process_presence(From, ToNick, Presence, StateData);
         <<>> ->
             %% groupchat 1.0 user, straight to normal_state
             process_presence(From, ToNick, Presence, StateData)
