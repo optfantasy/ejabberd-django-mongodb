@@ -226,10 +226,11 @@ initial_state({route, From, ToNick,
     case  xml:get_path_s(Presence,[{elem, <<"x">>}, {attr, <<"xmlns">>}]) of
         ?NS_MUC ->
             %% FIXME
-            add_to_log(room_existence, started, StateData),
-            process_presence(From, ToNick, Presence, StateData, locked_state);
+            % add_to_log(room_existence, started, StateData),
+            % process_presence(From, ToNick, Presence, StateData, locked_state);
             %% The fragment of normal_state with Activity that used to do this - how does that work?
             %% Seems to work without it
+            process_presence(From, ToNick, Presence, StateData);
         <<>> ->
             %% groupchat 1.0 user, straight to normal_state
             process_presence(From, ToNick, Presence, StateData)

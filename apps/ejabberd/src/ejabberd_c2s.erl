@@ -159,7 +159,7 @@ socket_type() ->
 
 %% Return Username, Resource and presence information
 get_presence(FsmRef) ->
-    ?GEN_FSM:sync_send_all_state_event(FsmRef, {get_presence}, 1000).
+    ?GEN_FSM:sync_send_all_state_event(FsmRef, get_presence, 1000).
 
 get_aux_field(Key, #state{aux_fields = Opts}) ->
     case lists:keysearch(Key, 1, Opts) of
@@ -1116,7 +1116,7 @@ handle_event(_Event, StateName, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %%----------------------------------------------------------------------
-handle_sync_event({get_presence}, _From, StateName, StateData) ->
+handle_sync_event(get_presence, _From, StateName, StateData) ->
     User = StateData#state.user,
     PresLast = StateData#state.pres_last,
 
@@ -1510,14 +1510,15 @@ send_text(StateData, Text) ->
     ?DEBUG("Send XML on stream = ~p", [Text]),
     (StateData#state.sockmod):send(StateData#state.socket, Text).
 
-send_element(StateData, El) when StateData#state.xml_socket ->
+send_element(#state{server = Server, sockmod = SockMod} = StateData, El)
+		when StateData#state.xml_socket ->
     ejabberd_hooks:run(xmpp_send_element,
-                       StateData#state.server, [El]),
-    (StateData#state.sockmod):send_xml(StateData#state.socket,
+                       Server, [Server, El]),
+    SockMod:send_xml(StateData#state.socket,
 				       {xmlstreamelement, El});
-send_element(StateData, El) ->
+send_element(#state{server = Server} = StateData, El) ->
     ejabberd_hooks:run(xmpp_send_element,
-                       StateData#state.server, [El]),
+                       Server, [Server, El]),
     send_text(StateData, xml:element_to_binary(El)).
 
 send_header(StateData, Server, Version, Lang)
@@ -1741,7 +1742,7 @@ presence_update(From, Packet, StateData) ->
 				  get_priority_from_presence(OldPresence)
 			  end,
 	    NewPriority = get_priority_from_presence(Packet),
-	    Timestamp = calendar:now_to_universal_time(now()),
+	    Timestamp = calendar:now_to_universal_time(os:timestamp()),
 	    update_priority(NewPriority, Packet, StateData),
 	    FromUnavail = (StateData#state.pres_last == undefined) or
 		StateData#state.pres_invis,
@@ -2017,7 +2018,7 @@ get_priority_from_presence(PresencePacket) ->
 	false ->
 	    0;
 	SubEl ->
-	    case catch list_to_integer(xml:get_tag_cdata(SubEl)) of
+        case catch list_to_integer(binary_to_list(xml:get_tag_cdata(SubEl))) of
 		P when is_integer(P) ->
 		    P;
 		_ ->
