@@ -1,0 +1,3 @@
+vars.config
+reltool_vars/localejabberd_vars.config
+reltool_vars/localhost_vars.config
