@@ -45,18 +45,18 @@ start_link(Host, Opts) ->
     gen_server:start_link({local, Proc}, ?MODULE, [Host, Opts], []).
 
 init([Host, Opts]) ->
-    application:start(jobs),
+    % application:start(jobs),
     inets:start(),
     setup_database(),
     mnesia:dirty_write(#rem_host{id="hostid",host=Host}),
 
-    Plimit = gen_mod:get_opt(process_limit, Opts, 4),
-    jobs:add_queue(httprequest, [
-        {regulators, [{counter, [
-                        {name, httprequest},
-                        {limit, Plimit}
-                      ]}]}
-    ]),
+    % Plimit = gen_mod:get_opt(process_limit, Opts, 4),
+    % jobs:add_queue(httprequest, [
+    %     {regulators, [{counter, [
+    %                     {name, httprequest},
+    %                     {limit, Plimit}
+    %                   ]}]}
+    % ]),
     {ok, {}}.
 
 setup_database() ->
@@ -81,20 +81,20 @@ code_change(_OldVsn, State, _Extra) ->
 
 handle_call({post, URL, Data}, _From, State) ->
     % io:format("===== handle_call post: ~p~n~n", [{URL, Data}]),
-    % httpc:request(post,
-    %     {URL,
-    %         [],
-    %         "application/x-www-form-urlencoded",
-    %         Data
-    %     }, [], []),
-    spawn( fun() ->
-        jobs:run(httprequest, fun() -> httpc:request(post,
-            {URL,
-                [],
-                "application/x-www-form-urlencoded",
-                Data
-            }, [], []) end)
-    end),
+    httpc:request(post,
+        {URL,
+            [],
+            "application/x-www-form-urlencoded",
+            Data
+        }, [], []),
+    % spawn( fun() ->
+    %     jobs:run(httprequest, fun() -> httpc:request(post,
+    %         {URL,
+    %             [],
+    %             "application/x-www-form-urlencoded",
+    %             Data
+    %         }, [], []) end)
+    % end),
     {reply, ok, State};
 
 handle_call(_Request, _From, State) ->
