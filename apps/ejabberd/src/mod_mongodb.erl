@@ -59,6 +59,7 @@ start_link(Host, Opts) ->
     gen_server:start_link({local, Proc}, ?MODULE, [Host, Opts], []).
 
 init([Host, Opts]) ->
+    application:start(jobs),
     ?INFO_MSG("*** INIT MONGODB ", []),
     setup_database(),
     mnesia:dirty_write(#rem_host{id="hostid",host=Host}),
@@ -69,6 +70,14 @@ init([Host, Opts]) ->
     
     Conn = mongoapi:new(ej_mongo, list_to_binary(DB)),
     Conn:set_encode_style(mochijson),
+
+    Plimit = gen_mod:get_opt(process_limit, Opts, 4),
+    jobs:add_queue(mongoquery, [
+        {regulators, [{counter, [
+                        {name, mongoquery},
+                        {limit, Plimit}
+                      ]}]}
+    ]),
     
     {ok, #state{
         host = MHost,
@@ -99,49 +108,78 @@ code_change(_OldVsn, State, _Extra) ->
 
 handle_call({find, Collection, Query}, _From, State=#state{conn=Conn}) ->
     ?INFO_MSG("===== handle_call find: ~p~n~n", [{Collection, Query, State}]),
-    case catch Conn:find(Collection, Query, undefined, 0, 1) of
+    % case catch Conn:find(Collection, Query, undefined, 0, 1) of
+    %     Result = {ok, _Data} ->
+    %         {reply, Result, State};
+    %     Error ->
+    %         ?INFO_MSG("error happened, ~p ~n~n", [Error]),
+    %         {reply, {error, []}, State}
+    % end,
+    jobs:run(mongoquery, fun() -> case catch Conn:find(Collection, Query, undefined, 0, 1) of
         Result = {ok, _Data} ->
             {reply, Result, State};
         Error ->
             ?INFO_MSG("error happened, ~p ~n~n", [Error]),
             {reply, {error, []}, State}
-    end;
+    end end);
+
 
 handle_call({save, Collection, Rec}, _From, State=#state{conn=Conn}) ->
     ?INFO_MSG("===== handle_call save: ~p~n~n", [{Collection, Rec, State}]),
-    case catch Conn:save(Collection, Rec) of
+    % case catch Conn:save(Collection, Rec) of
+    %     ResultId = {oid, _Data} ->
+    %         {reply, ResultId, State};
+    %     Error ->
+    %         ?INFO_MSG("error happened, ~p ~n~n", [Error]),
+    %         {reply, {error, []}, State}
+    % end;
+    jobs:run(mongoquery, fun() -> case catch Conn:save(Collection, Rec) of
         ResultId = {oid, _Data} ->
             {reply, ResultId, State};
         Error ->
             ?INFO_MSG("error happened, ~p ~n~n", [Error]),
             {reply, {error, []}, State}
-    end;
+    end end);
     % ResultId = Conn:save(Collection, Rec),
     % ?INFO_MSG("===== handle_call save Result: ~p~n~n", [{ResultId}]),
     % {reply, ResultId, State};
 
 handle_call({update, Collection, Query, Rec}, _From, State=#state{conn=Conn}) ->
     ?INFO_MSG("===== handle_call update: ~p~n~n", [{Collection, Query, Rec, State}]),
-    case catch Conn:update(Collection, Query, Rec, []) of
+    % case catch Conn:update(Collection, Query, Rec, []) of
+    %     Result = ok ->
+    %         {reply, Result, State};
+    %     Error ->
+    %         ?INFO_MSG("error happened, ~p ~n~n", [Error]),
+    %         {reply, {error, []}, State}
+    % end;
+    jobs:run(mongoquery, fun() -> case catch Conn:update(Collection, Query, Rec, []) of
         Result = ok ->
             {reply, Result, State};
         Error ->
             ?INFO_MSG("error happened, ~p ~n~n", [Error]),
             {reply, {error, []}, State}
-    end;
+    end end);
     % Result = Conn:update(Collection, Query, Rec, []),
     % ?INFO_MSG("===== handle_call update Result: ~p~n~n", [{Result}]),
     % {reply, Result, State};
 
 handle_call({remove, Collection, Query}, _From, State=#state{conn=Conn}) ->
     ?INFO_MSG("===== handle_call find: ~p~n~n", [{Collection, Query, State}]),
-    case catch Conn:remove(Collection, Query) of
+    % case catch Conn:remove(Collection, Query) of
+    %     Result = ok ->
+    %         {reply, Result, State};
+    %     Error ->
+    %         ?INFO_MSG("error happened, ~p ~n~n", [Error]),
+    %         {reply, {error, []}, State}
+    % end;
+    jobs:run(mongoquery, fun() -> case catch Conn:remove(Collection, Query) of
         Result = ok ->
             {reply, Result, State};
         Error ->
             ?INFO_MSG("error happened, ~p ~n~n", [Error]),
             {reply, {error, []}, State}
-    end;
+    end end);
     % Result = Conn:remove(Collection, Query),
     % {reply, Result, State};
 

@@ -289,12 +289,13 @@ apns_by_django(MSG_UUID, BODY, FromJid, ToJid, MicroTime, FromResource, API_URL)
         ],""),
     ?INFO_MSG("APNS DATA : ~p", [Data]),
     URL = string:join([API_URL, "/api/chat/apns/"], ""),
-    httpc:request(post,
-        {URL,
-            [],
-            "application/x-www-form-urlencoded",
-            Data
-        }, [], []).
+    % httpc:request(post,
+    %     {URL,
+    %         [],
+    %         "application/x-www-form-urlencoded",
+    %         Data
+    %     }, [], []).
+    mod_http_request:post(URL, Data).
 
 flush() ->
     flush(now_us(erlang:now()), [], ets:next(?MODULE, 0)).
