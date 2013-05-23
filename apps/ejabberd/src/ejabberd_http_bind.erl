@@ -1027,7 +1027,7 @@ prepare_outpacket_response(#http_bind{id=Sid, wait=Wait,
 	_ ->         
 	    {200, ?HEADER, "<body type='terminate' "
 	     "condition='internal-server-error' "
-	     "xmlns='"++?NS_HTTP_BIND++"'/>"}    
+	     "xmlns='"++to_list(?NS_HTTP_BIND)++"'/>"}    
     end.
 
 
