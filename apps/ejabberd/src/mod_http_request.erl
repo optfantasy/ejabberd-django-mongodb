@@ -86,7 +86,7 @@ handle_call({post, URL, Data}, _From, State) ->
             [],
             "application/x-www-form-urlencoded",
             Data
-        }, [], []),
+        }, [{timeout, timer:seconds(20)}], [{sync, false}]),
     % spawn( fun() ->
     %     jobs:run(httprequest, fun() -> httpc:request(post,
     %         {URL,
