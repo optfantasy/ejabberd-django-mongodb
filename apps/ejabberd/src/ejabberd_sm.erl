@@ -57,7 +57,8 @@
          get_user_ip/3,
          connected_users/0,
          connected_users_number/0,
-         pubsub_message/5
+         pubsub_message/5,
+         pubsub_message_b64/5
         ]).
 
 %% gen_server callbacks
@@ -675,6 +676,12 @@ commands() ->
         args = [{localuser, string}, {localserver, string},
             {key, string}, {users, string}, {message, string}],
         result = {res, rescode}},
+    #ejabberd_commands{name = pubsub_message_b64, tags = [pubsub],
+        desc = "Publish message to specific users",
+        module = ?MODULE, function = pubsub_message_b64,
+        args = [{localuser, string}, {localserver, string},
+            {key, string}, {users, string}, {message, string}],
+        result = {res, rescode}},
     #ejabberd_commands{name = connected_users,
             tags = [session],
             desc = "List all established sessions",
@@ -710,6 +717,11 @@ user_resources(User, Server) ->
 
 pubsub_message(LocalUser, LocalServer, Key, Users, Message) ->
     USERS = re:split(Users, ",", [{return, list}]),
+    send_to_users(LocalUser,USERS, LocalServer, Message).
+
+pubsub_message_b64(LocalUser, LocalServer, Key, Users, Message64) ->
+    USERS = re:split(Users, ",", [{return, list}]),
+    Message = base64:decode_to_string(Message64),
     send_to_users(LocalUser,USERS, LocalServer, Message).
 
 send_to_users(LocalUser, Users, Server, Message) ->
