@@ -89,7 +89,8 @@ setup_database() ->
     migrate_database(),
     mnesia:create_table(rem_host,
             [{ram_copies, [node()]},
-             {attributes, record_info(fields, rem_host)}]).
+             {attributes, record_info(fields, rem_host)}]),
+    mnesia:add_table_copy(rem_host, node(), ram_copies).
 
 migrate_database() ->
     case catch mnesia:table_info(rem_host, attributes) of

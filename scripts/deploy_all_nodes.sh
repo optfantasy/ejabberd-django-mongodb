@@ -85,13 +85,13 @@ echo "[deploy_nodes] Stage db_sync ...... [OK]"
 echo "[dbsync] Stage db_sync ...... [INIT]"
 
 INV=2
-IS_RUNNING=`ssh $FIRST_NODE "bash ~/ejabberd/bin/ejabberdctl mnesia"|grep is_running|awk -F, '{print $2}'|sed 's/}$//'`
+IS_RUNNING=`ssh $USER@$FIRST_NODE "bash ~/ejabberd/bin/ejabberdctl mnesia"|grep is_running|awk -F, '{print $2}'|sed 's/}$//'`
 
 while [ "yes" != "$IS_RUNNING" ]
 do
     sleep $INV
     echo "sleep & test mnesia @ $FIRST_NODE"
-    IS_RUNNING=`ssh $FIRST_NODE "bash ~/ejabberd/bin/ejabberdctl mnesia"|grep is_running|awk -F, '{print $2}'|sed 's/}$//'`
+    IS_RUNNING=`ssh $USER@$FIRST_NODE "bash ~/ejabberd/bin/ejabberdctl mnesia"|grep is_running|awk -F, '{print $2}'|sed 's/}$//'`
 done
 
 # After deploying, do db_sync for all slave node.
