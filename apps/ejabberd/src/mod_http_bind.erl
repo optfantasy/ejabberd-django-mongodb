@@ -125,7 +125,7 @@ setup_database() ->
     mnesia:create_table(http_bind,
 			[{ram_copies, [node()]},
 			 {attributes, record_info(fields, http_bind)}]),
-    mnesia:add_table_copy(http_bind, Node, ram_copies).
+    mnesia:add_table_copy(http_bind, node(), ram_copies).
 
 migrate_database() ->
     case catch mnesia:table_info(http_bind, attributes) of
