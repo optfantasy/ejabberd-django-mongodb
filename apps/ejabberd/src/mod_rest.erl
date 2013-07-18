@@ -55,7 +55,7 @@ process([], #request{method = 'POST',
 	maybe_post_request(Data, Host, ClientIp)
     catch
 	error:{badmatch, _} = Error ->
-	    ?DEBUG("Error when processing REST request: ~nData: ~p~nError: ~p", [Data, Error]),
+	    ?ERROR_MSG("Error when processing REST request: ~nData: ~p~nError: ~p~nIP: ~p", [Data, Error, ClientIp]),
 	    {406, [], "Error: REST request is rejected by service."}
     end;
 process(Path, Request) ->
