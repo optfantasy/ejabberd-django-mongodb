@@ -734,22 +734,76 @@ send_to_users(LocalUser, Users, Server, Message) ->
     end.
 
 send_message(LocalUser, User, Server, Message) ->
-    % io:format("========~p ~p ~p ~n",[User, Server, Message]),
     LUser = list_to_binary(User),
     LServer = list_to_binary(Server),
     
-    % io:format('=================== OFFLINE ~p ============= ~n~n', [dirty_get_sessions_list()]),
-    case ?SM_BACKEND:get_sessions(LUser, LServer) of
+    SS = ?SM_BACKEND:get_sessions(LUser, LServer),
+    ActionType = get_action_type(Message),
+    case SS of
         [] ->
-            offine;
-        SS ->
+            case ActionType of
+                <<"/chat/msg/read">> ->
+                    offline;
+                _ ->
+                    API_URL = ejabberd_config:get_local_option({api_url, LServer}),
+                    Data = string:join([
+                        "user_id=",User,
+                        "&pubsub_msg=", encode(Message),
+                        "&post_key=2vsAATy79N"
+                        ],""),
+                    URL = string:join([API_URL, "/api/chat/pubsubfailed/"], ""),
+                    mod_http_request:post(URL, Data),
+                    offine
+            end;
+        _ ->
             ToJID=jlib:make_jid(LUser,LServer,<<"">>),
             FromJID=jlib:make_jid(<<"">>,LServer,<<"">>),
             % route_message(FromJID, ToJID,{xmlel,<<"message">>,[{<<"to">>,<<"gage@localhost">>},{<<"type">>,<<"pubsub">>}],[{xmlel,<<"body">>,[],[{xmlcdata,<<"cccc">>}]}]}),
             ejabberd_router:route(FromJID, ToJID, {xmlel,<<"message">>,[{<<"type">>,<<"pubsub">>}],[{xmlel,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
         %    ejabberd_router:route(FromJID, ToJID, {xmlel,<<"message">>,[{<<"type">>,<<"chat">>}],[{xmlel,<<"body">>,[],[{xmlcdata,list_to_binary(Message)}]}]}),
+            case ActionType of
+                <<"/chat/msg/read">> ->
+                    ok;
+                _ ->
+                    update_sent_pubsub(SS, LUser, LServer),
+                    ok
+            end
+    end.
+
+get_action_type(Message) ->
+    Struct = mochijson2:decode(Message),
+    {struct, JsonData} = Struct,
+    ActionType = proplists:get_value(<<"action_type">>, JsonData),
+    ActionType.
+
+update_sent_pubsub(Sessions,UID, Server) ->
+    case Sessions of
+        [Session | Others] ->
+            sent_pubsublog(Session,UID, Server),
+            update_sent_pubsub(Others,UID, Server);
+        [] ->
             ok
     end.
+
+sent_pubsublog(Session, UID, Server) ->
+    {session, _P, JID_L, _JID_S, _, _IP_INFO} = Session,
+    {_, _, Resource} = JID_L,
+    Resource_List = binary_to_list(Resource),
+    case string:substr(Resource_List,1,3) of
+        "WEB" ->
+            ok;
+        _ ->
+            API_URL = ejabberd_config:get_local_option({api_url, Server}),
+            Data = string:join([
+                "user_id=",binary_to_list(UID),
+                "&resource=", encode(Resource_List),
+                "&post_key=2vsAATy79N"
+                ],""),
+            URL = string:join([API_URL, "/api/chat/pubsubsent/"], ""),
+            mod_http_request:post(URL, Data),
+            ok
+    end.
+
 
 -spec sm_backend(atom()) -> string().
 sm_backend(Backend) ->
@@ -762,3 +816,76 @@ sm_backend(Backend) ->
             ejabberd_sm_",
        atom_to_list(Backend),
        ".\n"]).
+
+encode([C | Cs]) when C >= $a, C =< $z ->
+  [C | encode(Cs)];
+encode([C | Cs]) when C >= $A, C =< $Z ->
+  [C | encode(Cs)];
+encode([C | Cs]) when C >= $0, C =< $9 ->
+  [C | encode(Cs)];
+  
+encode([C | Cs]) when C == 16#20 -> % space to +
+  [$+ | encode(Cs)];
+
+% unreserved
+encode([C = $- | Cs]) ->
+  [C | encode(Cs)];
+encode([C = $_ | Cs]) ->
+  [C | encode(Cs)];
+encode([C = 46 | Cs]) -> % .
+  [C | encode(Cs)];
+encode([C = $! | Cs]) ->
+  [C | encode(Cs)];
+encode([C = $~ | Cs]) ->
+  [C | encode(Cs)];
+encode([C = $* | Cs]) ->
+  [C | encode(Cs)];
+encode([C = 39 | Cs]) -> % '
+  [C | encode(Cs)];
+encode([C = $( | Cs]) ->
+  [C | encode(Cs)];
+encode([C = $) | Cs]) ->
+  [C | encode(Cs)];
+
+encode([C | Cs]) when C =< 16#7f ->
+  escape_byte(C)
+  ++ encode(Cs);
+  
+encode([C | Cs]) when (C >= 16#7f) and (C =< 16#07FF) ->
+  escape_byte((C bsr 6) + 16#c0)
+  ++ escape_byte(C band 16#3f + 16#80)
+  ++ encode(Cs);
+
+encode([C | Cs]) when (C > 16#07FF) ->
+  escape_byte((C bsr 12) + 16#e0) % (0xe0 | C >> 12)
+  ++ escape_byte((16#3f band (C bsr 6)) + 16#80) % 0x80 | ((C >> 6) & 0x3f)
+  ++ escape_byte(C band 16#3f + 16#80) % 0x80 | (C >> 0x3f)
+  ++ encode(Cs);
+
+encode([C | Cs]) ->
+  escape_byte(C) ++ encode(Cs);
+
+encode([]) -> [].
+
+% from edoc_lib source
+hex_octet(N) when N =< 9 ->
+    [$0 + N];
+hex_octet(N) when N > 15 ->
+    hex_octet(N bsr 4) ++ hex_octet(N band 15);
+hex_octet(N) ->
+    [N - 10 + $a].
+
+escape_byte(C) ->
+  H = hex_octet(C),
+  normalize(H).
+
+%% Append 0 if length == 1
+normalize(H) when length(H) == 1 ->
+  "%0" ++ H;
+
+normalize(H) ->
+  "%" ++ H.
+
+
+
+

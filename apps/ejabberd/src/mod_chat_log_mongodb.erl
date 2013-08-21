@@ -79,7 +79,7 @@ init([_Host, Opts]) ->
     % end,
 	% timer:send_interval(?INTERVAL, update_message_timestamp),
 	
-    API_URL = gen_mod:get_opt(gulu_api_url, Opts, "http://localhost:8000"),
+  API_URL = gen_mod:get_opt(gulu_api_url, Opts, "http://localhost:8000"),
 	Host = gen_mod:get_opt(hosts, Opts, ["localhost:27017"]),
 	DB = gen_mod:get_opt(db, Opts, "xmpp"),
 	Collection = gen_mod:get_opt(collection, Opts, "message"),
@@ -108,12 +108,12 @@ handle_call(Request, _From, State) ->
 	?INFO_MSG("Unexpected call: ~p~n~n", [Request]),
 	{reply, ok, State}.
 
-handle_cast({apns, MSG_UUID, BODY, FromJid, ToJid, MicroTime,FromResource}, S=#state{conn=Conn, collection=_Coll, api_url=API_URL}) ->
+handle_cast({apns, MSG_UUID, BODY, FromJid, ToJid, MicroTime,FromResource}, S=#state{conn=_Conn, collection=_Coll, api_url=API_URL}) ->
     % ?INFO_MSG("push Message: ~p ~n~n", [{MSG_UUID, BODY, FromJid, ToJid, MicroTime,FromResource}]),
     apns_by_django(MSG_UUID, BODY, FromJid, ToJid, MicroTime, FromResource, API_URL),
     {noreply, S};
 
-handle_cast({save, Rec}, S=#state{conn=Conn, collection=Coll}) ->
+handle_cast({save, Rec}, S=#state{conn=_Conn, collection=Coll}) ->
     % ?INFO_MSG("========================================Save Message: ~p~n~n", [Rec]),
     % Conn:save(Coll, Rec),
     mod_mongodb:save(Coll, Rec),
@@ -209,7 +209,7 @@ log_packet(From, To, Packet = {xmlel, <<"message">>, Attrs, _Els}) ->
 log_packet(_From, _To, _Packet) ->
     ok.
 
-save_packet(From, To, Packet, Type, Attrs) ->
+save_packet(From, To, Packet, Type, _Attrs) ->
 
 	Body = xml:get_path_s(Packet, [{elem, <<"body">>}, cdata]),
 
@@ -218,7 +218,7 @@ save_packet(From, To, Packet, Type, Attrs) ->
                 <<>> -> list_to_binary(uuid:to_string(uuid:uuid4()));
                 _ -> UUID
             end,
-    Tags = xml:get_path_s(Packet, [{elem, <<"info">>}, {attr, <<"tags">>}]),
+    _Tags = xml:get_path_s(Packet, [{elem, <<"info">>}, {attr, <<"tags">>}]),
 
 	case Body of
 		<<"">> -> %% don't log empty messages
@@ -231,12 +231,12 @@ save_packet(From, To, Packet, Type, Attrs) ->
 			FromHost = From#jid.lserver,
 			FromResource = From#jid.resource,
 			ToJid = To#jid.luser,
-			ToHost = To#jid.lserver,
-			ToResource = To#jid.resource,
+			_ToHost = To#jid.lserver,
+			_ToResource = To#jid.resource,
 
             % ?INFO_MSG("==---------FromJid:~p~n~n FromHost:~p~n~n FromResource:~p~n~n ToJid:~p~n~n ToHost:~p~n~n ToResource:~p~n~n", [FromJid, FromHost, FromResource, ToJid, ToHost, ToResource]),
 
-			Timestamp = unix_timestamp(),
+			_Timestamp = unix_timestamp(),
 			MicroTime = now_us(erlang:now()),
 
           % 	Rec = [
@@ -308,15 +308,15 @@ flush(MaxKey, Acc, CurrKey) when CurrKey < MaxKey ->
 flush(MaxKey, Acc, CurrKey) when CurrKey >= MaxKey ->
     Acc.
 
-array_list_to_binary(Arr) ->
-    case Arr of
-        [] ->
-            Arr;
-        [A|B] when is_list(A) ->
-            [list_to_binary(A)] ++ array_list_to_binary(B);
-        [C|D] ->
-            [C] ++ array_list_to_binary(D)
-    end.
+% array_list_to_binary(Arr) ->
+%     case Arr of
+%         [] ->
+%             Arr;
+%         [A|B] when is_list(A) ->
+%             [list_to_binary(A)] ++ array_list_to_binary(B);
+%         [C|D] ->
+%             [C] ++ array_list_to_binary(D)
+%     end.
 
 unix_timestamp() ->
     unix_timestamp(calendar:universal_time()).
@@ -329,15 +329,15 @@ unix_timestamp(DT) ->
 now_us({MegaSecs,Secs,MicroSecs}) ->
 	(MegaSecs*1000000 + Secs)*1000000 + MicroSecs. 
 
-prepare(Val) ->
-    case Val of
-        undefined -> 
-            <<"">>;
-	    Val when is_list(Val) ->
-		    list_to_binary(Val);
-        _ -> 
-            Val
-    end.
+% prepare(Val) ->
+%     case Val of
+%         undefined -> 
+%             <<"">>;
+% 	    Val when is_list(Val) ->
+% 		    list_to_binary(Val);
+%         _ -> 
+%             Val
+%     end.
 
 prepare_list(Val) ->
     case Val of
