@@ -265,7 +265,7 @@ save_packet(From, To, Packet, Type, _Attrs) ->
                     gen_server:cast(Proc, {
                         apns,
                         binary_to_list(MsgUUID),
-                        unicode:characters_to_list(Body),
+                        Body,
                         prepare_list(FromJid),
                         prepare_list(ToJid),
                         integer_to_list(MicroTime),
@@ -281,11 +281,12 @@ apns_by_django(MSG_UUID, BODY, FromJid, ToJid, MicroTime, FromResource, API_URL)
     ?INFO_MSG("APNS DATA : ~p ~p", [MSG_UUID, BODY]),
     Data = string:join([
         "post_key=2vsAATy79N&msg_uuid=",MSG_UUID,
-        "&body=", encode(BODY),
+        "&body=", encode(binary_to_list(base64:encode(BODY))),
         "&username=", FromJid,
         "&to_group=", ToJid,
         "&micro_ts=", MicroTime,
-        "&from_resource=", FromResource
+        "&from_resource=", FromResource,
+        "&b64=true"
         ],""),
     ?INFO_MSG("APNS DATA : ~p", [Data]),
     URL = string:join([API_URL, "/api/chat/apns/"], ""),
